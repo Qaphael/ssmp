@@ -1,0 +1,16 @@
+I'm building a sports competition platform called SSMP. I've put three documents
+in this folder: SSMP-PRD.md, SSMP-Project-Structure.md, and SSMP-Roadmap.md.
+Read all three fully before doing anything.
+
+Set up a monorepo with this structure, exactly as described in
+SSMP-Project-Structure.md:
+- apps/api        (Node.js/Express backend)
+- apps/admin      (empty placeholder folder for now)
+- apps/public     (empty placeholder folder for now)
+- packages/shared-types
+- docs/           (move the three documents in here)
+- pnpm workspace config at the root
+
+Don't write any application logic yet — just the skeleton. Confirm
+`pnpm install` runs clean, then commit and push everything to the ssmp
+GitHub repo.

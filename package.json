@@ -1,0 +1,14 @@
+{
+  "name": "ssmp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "School Sports Competition Management Platform",
+  "scripts": {
+    "dev:api": "pnpm --filter @ssmp/api dev",
+    "build": "pnpm --filter @ssmp/shared-types build"
+  },
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=8"
+  }
+}
