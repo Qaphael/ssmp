@@ -1,5 +1,6 @@
 packages:
   - "apps/*"
   - "packages/*"
-allowBuilds:
-  esbuild: set this to true or false
+overrides:
+  "@types/react": "18.3.31"
+  "@types/react-dom": "18.3.7"
