@@ -7,10 +7,10 @@ const { CreateOrganizationSchema, UpdateOrganizationSchema } = require('@ssmp/sh
 
 const router = Router();
 
-router.get('/', auth, rbac('system_admin', 'comp_admin'), organizationController.list);
-router.get('/:id', auth, rbac('system_admin', 'comp_admin'), organizationController.getById);
-router.post('/', auth, rbac('system_admin'), validate(CreateOrganizationSchema), organizationController.create);
-router.patch('/:id', auth, rbac('system_admin'), validate(UpdateOrganizationSchema), organizationController.update);
-router.delete('/:id', auth, rbac('system_admin'), organizationController.delete);
+router.get('/',    auth, rbac('organization:list'),   organizationController.list);
+router.get('/:id', auth, rbac('organization:read'),   organizationController.getById);
+router.post('/',   auth, rbac('organization:create'), validate(CreateOrganizationSchema), organizationController.create);
+router.patch('/:id', auth, rbac('organization:update'), validate(UpdateOrganizationSchema), organizationController.update);
+router.delete('/:id', auth, rbac('organization:delete'), organizationController.delete);
 
 module.exports = router;
