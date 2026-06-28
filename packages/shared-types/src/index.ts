@@ -389,8 +389,8 @@ export type Season = z.infer<typeof SeasonSchema>;
 export const CreateSeasonSchema = z.object({
   organizationId: z.string().uuid(),
   name: z.string().min(1).max(100),
-  startDate: z.date(),
-  endDate: z.date(),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
 }).refine((data) => data.endDate > data.startDate, {
   message: 'End date must be after start date',
   path: ['endDate'],
@@ -400,8 +400,8 @@ export type CreateSeason = z.infer<typeof CreateSeasonSchema>;
 export const UpdateSeasonSchema = z.object({
   organizationId: z.string().uuid().optional(),
   name: z.string().min(1).max(100).optional(),
-  startDate: z.date().optional(),
-  endDate: z.date().optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
 }).refine(
   (data) => {
     if (data.startDate && data.endDate) return data.endDate > data.startDate;
@@ -432,8 +432,8 @@ export const CompetitionRulesSchema = z.object({
 export type CompetitionRules = z.infer<typeof CompetitionRulesSchema>;
 
 export const RegistrationWindowSchema = z.object({
-  opensAt: z.date(),
-  closesAt: z.date(),
+  opensAt: z.coerce.date(),
+  closesAt: z.coerce.date(),
 }).refine((data) => data.closesAt > data.opensAt, {
   message: 'Registration must close after it opens',
   path: ['closesAt'],
@@ -599,7 +599,7 @@ export const CreatePlayerSchema = z.object({
   lastName: z.string().min(1).max(100),
   jerseyNumber: z.number().int().min(0).max(99),
   position: z.string().max(50).optional(),
-  dateOfBirth: z.date(),
+  dateOfBirth: z.coerce.date(),
   nationality: z.string().max(100).optional(),
   height: z.number().positive().max(300).optional(),
   weight: z.number().positive().max(300).optional(),

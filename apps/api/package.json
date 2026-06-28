@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
     "generate:openapi": "node scripts/generate-openapi.cjs"
   },
   "dependencies": {
@@ -20,6 +22,8 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.0",
+    "supertest": "^7.2.2"
   }
 }
