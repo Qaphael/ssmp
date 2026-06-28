@@ -1,11 +1,18 @@
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 3001;
+const app = require('./app');
+const { env } = require('./config/env');
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+const server = app.listen(env.port, () => {
+  console.log(`SSMP API running on port ${env.port}`);
+  console.log(`Environment: ${env.nodeEnv}`);
 });
 
-app.listen(PORT, () => {
-  console.log(`SSMP API running on port ${PORT}`);
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down...');
+  server.close(() => {
+    process.exit(0);
+  });
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
 });
