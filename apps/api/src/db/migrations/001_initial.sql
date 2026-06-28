@@ -1,5 +1,5 @@
 -- SSMP Database Schema
--- Teams and Players modules
+-- Organization → Season → Competition → Team → Player hierarchy
 
 -- Organizations
 CREATE TABLE IF NOT EXISTS organizations (
