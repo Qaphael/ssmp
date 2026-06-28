@@ -14,6 +14,17 @@ export const SportSchema = z.enum([
 ]);
 export type Sport = z.infer<typeof SportSchema>;
 
+export const UserRoleSchema = z.enum([
+  'system_admin',
+  'comp_admin',
+  'registrar',
+  'referee_coordinator',
+  'media_officer',
+  'official',
+  'coach',
+]);
+export type UserRole = z.infer<typeof UserRoleSchema>;
+
 export const CompetitionStatusSchema = z.enum([
   'draft',
   'setup',
@@ -54,6 +65,85 @@ export const TransferStatusSchema = z.enum([
   'rejected',
 ]);
 export type TransferStatus = z.infer<typeof TransferStatusSchema>;
+
+export const MatchStatusSchema = z.enum([
+  'scheduled',
+  'officials_assigned',
+  'lineups_submitted',
+  'lineups_locked',
+  'kickoff',
+  'half_time',
+  'second_half',
+  'extra_time',
+  'penalties',
+  'full_time',
+  'report_submitted',
+  'verified',
+  'published',
+  'postponed',
+  'cancelled',
+  'abandoned',
+  'walkover',
+]);
+export type MatchStatus = z.infer<typeof MatchStatusSchema>;
+
+export const CardTypeSchema = z.enum(['yellow', 'red']);
+export type CardType = z.infer<typeof CardTypeSchema>;
+
+export const OfficialAttendanceSchema = z.enum(['present', 'absent', 'late']);
+export type OfficialAttendance = z.infer<typeof OfficialAttendanceSchema>;
+
+export const NotificationTypeSchema = z.enum([
+  'fixture_published',
+  'fixture_changed',
+  'official_assigned',
+  'roster_approved',
+  'roster_rejected',
+  'transfer_approved',
+  'transfer_rejected',
+  'suspension_applied',
+  'kickoff_reminder',
+  'match_postponed',
+  'match_cancelled',
+]);
+export type NotificationType = z.infer<typeof NotificationTypeSchema>;
+
+export const MediaTypeSchema = z.enum([
+  'logo',
+  'photo',
+  'video',
+  'document',
+]);
+export type MediaType = z.infer<typeof MediaTypeSchema>;
+
+// ============================================================================
+// User
+// ============================================================================
+
+export const UserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  role: UserRoleSchema,
+  isActive: z.boolean().default(true),
+  lastLoginAt: z.date().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type User = z.infer<typeof UserSchema>;
+
+export const CreateUserSchema = UserSchema.omit({
+  id: true,
+  isActive: true,
+  lastLoginAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type CreateUser = z.infer<typeof CreateUserSchema>;
+
+export const UpdateUserSchema = CreateUserSchema.partial();
+export type UpdateUser = z.infer<typeof UpdateUserSchema>;
 
 // ============================================================================
 // Organization
@@ -118,6 +208,7 @@ export const CompetitionRulesSchema = z.object({
   pointsForLoss: z.number().int().min(0).default(0),
   matchDurationMinutes: z.number().int().min(1).default(90),
   halfTimeDurationMinutes: z.number().int().min(0).default(15),
+  extraTimeDurationMinutes: z.number().int().min(0).default(15),
   allowedSubstitutions: z.number().int().min(0).default(5),
   yellowCardsForSuspension: z.number().int().min(1).default(2),
   suspensionMatches: z.number().int().min(1).default(1),
@@ -163,12 +254,63 @@ export const UpdateCompetitionSchema = CreateCompetitionSchema.partial();
 export type UpdateCompetition = z.infer<typeof UpdateCompetitionSchema>;
 
 // ============================================================================
+// Group
+// ============================================================================
+
+export const GroupSchema = z.object({
+  id: z.string().uuid(),
+  competitionId: z.string().uuid(),
+  name: z.string().min(1).max(50),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type Group = z.infer<typeof GroupSchema>;
+
+export const CreateGroupSchema = GroupSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type CreateGroup = z.infer<typeof CreateGroupSchema>;
+
+export const UpdateGroupSchema = CreateGroupSchema.partial();
+export type UpdateGroup = z.infer<typeof UpdateGroupSchema>;
+
+// ============================================================================
+// Pitch / Venue
+// ============================================================================
+
+export const PitchSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+  address: z.string().optional(),
+  capacity: z.number().int().min(0).optional(),
+  surfaceType: z.string().max(50).optional(),
+  isAvailable: z.boolean().default(true),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type Pitch = z.infer<typeof PitchSchema>;
+
+export const CreatePitchSchema = PitchSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type CreatePitch = z.infer<typeof CreatePitchSchema>;
+
+export const UpdatePitchSchema = CreatePitchSchema.partial();
+export type UpdatePitch = z.infer<typeof UpdatePitchSchema>;
+
+// ============================================================================
 // Team (School)
 // ============================================================================
 
 export const TeamSchema = z.object({
   id: z.string().uuid(),
   competitionId: z.string().uuid(),
+  groupId: z.string().uuid().optional(),
   name: z.string().min(1).max(255),
   schoolName: z.string().min(1).max(255),
   description: z.string().optional(),
@@ -269,6 +411,39 @@ export const CoachSchema = z.object({
 export type Coach = z.infer<typeof CoachSchema>;
 
 // ============================================================================
+// Official (Referee)
+// ============================================================================
+
+export const OfficialSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  certifications: z.array(z.string()).optional(),
+  availability: z
+    .object({
+      weekdayEvenings: z.boolean().default(true),
+      weekends: z.boolean().default(true),
+      holidays: z.boolean().default(false),
+    })
+    .optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type Official = z.infer<typeof OfficialSchema>;
+
+export const CreateOfficialSchema = OfficialSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type CreateOfficial = z.infer<typeof CreateOfficialSchema>;
+
+export const UpdateOfficialSchema = CreateOfficialSchema.partial();
+export type UpdateOfficial = z.infer<typeof UpdateOfficialSchema>;
+
+// ============================================================================
 // Registration (Team Application)
 // ============================================================================
 
@@ -339,6 +514,320 @@ export const TransferRequestSchema = z.object({
   updatedAt: z.date(),
 });
 export type TransferRequest = z.infer<typeof TransferRequestSchema>;
+
+// ============================================================================
+// Fixture
+// ============================================================================
+
+export const FixtureSchema = z.object({
+  id: z.string().uuid(),
+  competitionId: z.string().uuid(),
+  matchday: z.number().int().min(1),
+  homeTeamId: z.string().uuid(),
+  awayTeamId: z.string().uuid(),
+  scheduledAt: z.date(),
+  pitchId: z.string().uuid().optional(),
+  status: MatchStatusSchema,
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type Fixture = z.infer<typeof FixtureSchema>;
+
+export const CreateFixtureSchema = FixtureSchema.omit({
+  id: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type CreateFixture = z.infer<typeof CreateFixtureSchema>;
+
+export const UpdateFixtureSchema = CreateFixtureSchema.partial();
+export type UpdateFixture = z.infer<typeof UpdateFixtureSchema>;
+
+// ============================================================================
+// Match
+// ============================================================================
+
+export const MatchSchema = z.object({
+  id: z.string().uuid(),
+  fixtureId: z.string().uuid(),
+  competitionId: z.string().uuid(),
+  homeTeamId: z.string().uuid(),
+  awayTeamId: z.string().uuid(),
+  homeScore: z.number().int().min(0).default(0),
+  awayScore: z.number().int().min(0).default(0),
+  status: MatchStatusSchema,
+  pitchId: z.string().uuid().optional(),
+  scheduledAt: z.date(),
+  startedAt: z.date().optional(),
+  halfTimeAt: z.date().optional(),
+  endedAt: z.date().optional(),
+  extraTimeEnabled: z.boolean().default(false),
+  penaltiesEnabled: z.boolean().default(false),
+  homePenalties: z.number().int().min(0).optional(),
+  awayPenalties: z.number().int().min(0).optional(),
+  officialId: z.string().uuid().optional(),
+  reportSubmittedAt: z.date().optional(),
+  verifiedAt: z.date().optional(),
+  verifiedBy: z.string().uuid().optional(),
+  publishedAt: z.date().optional(),
+  walkoverTeamId: z.string().uuid().optional(),
+  walkoverReason: z.string().optional(),
+  postponedReason: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type Match = z.infer<typeof MatchSchema>;
+
+export const CreateMatchSchema = MatchSchema.omit({
+  id: true,
+  homeScore: true,
+  awayScore: true,
+  status: true,
+  startedAt: true,
+  halfTimeAt: true,
+  endedAt: true,
+  extraTimeEnabled: true,
+  penaltiesEnabled: true,
+  homePenalties: true,
+  awayPenalties: true,
+  officialId: true,
+  reportSubmittedAt: true,
+  verifiedAt: true,
+  verifiedBy: true,
+  publishedAt: true,
+  walkoverTeamId: true,
+  walkoverReason: true,
+  postponedReason: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type CreateMatch = z.infer<typeof CreateMatchSchema>;
+
+export const UpdateMatchSchema = CreateMatchSchema.partial();
+export type UpdateMatch = z.infer<typeof UpdateMatchSchema>;
+
+// ============================================================================
+// Match Event
+// ============================================================================
+
+export const MatchEventTypeSchema = z.enum([
+  'kickoff',
+  'goal',
+  'own_goal',
+  'assist',
+  'yellow_card',
+  'red_card',
+  'substitution',
+  'half_time',
+  'full_time',
+  'extra_time_start',
+  'penalty_scored',
+  'penalty_missed',
+]);
+export type MatchEventType = z.infer<typeof MatchEventTypeSchema>;
+
+export const MatchEventSchema = z.object({
+  id: z.string().uuid(),
+  matchId: z.string().uuid(),
+  type: MatchEventTypeSchema,
+  minute: z.number().int().min(0).max(120),
+  playerId: z.string().uuid().optional(),
+  teamId: z.string().uuid().optional(),
+  description: z.string().optional(),
+  recordedBy: z.string().uuid(),
+  createdAt: z.date(),
+});
+export type MatchEvent = z.infer<typeof MatchEventSchema>;
+
+export const CreateMatchEventSchema = MatchEventSchema.omit({
+  id: true,
+  createdAt: true,
+});
+export type CreateMatchEvent = z.infer<typeof CreateMatchEventSchema>;
+
+// ============================================================================
+// Lineup
+// ============================================================================
+
+export const LineupSchema = z.object({
+  id: z.string().uuid(),
+  matchId: z.string().uuid(),
+  teamId: z.string().uuid(),
+  playerIds: z.array(z.string().uuid()).min(1).max(20),
+  isStarting: z.boolean().default(true),
+  isLocked: z.boolean().default(false),
+  submittedBy: z.string().uuid(),
+  submittedAt: z.date(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type Lineup = z.infer<typeof LineupSchema>;
+
+export const CreateLineupSchema = LineupSchema.omit({
+  id: true,
+  isLocked: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type CreateLineup = z.infer<typeof CreateLineupSchema>;
+
+// ============================================================================
+// Card (Discipline)
+// ============================================================================
+
+export const CardSchema = z.object({
+  id: z.string().uuid(),
+  matchId: z.string().uuid(),
+  playerId: z.string().uuid(),
+  teamId: z.string().uuid(),
+  type: CardTypeSchema,
+  minute: z.number().int().min(0).max(120),
+  reason: z.string().optional(),
+  competitionId: z.string().uuid(),
+  createdAt: z.date(),
+});
+export type Card = z.infer<typeof CardSchema>;
+
+export const CreateCardSchema = CardSchema.omit({
+  id: true,
+  createdAt: true,
+});
+export type CreateCard = z.infer<typeof CreateCardSchema>;
+
+// ============================================================================
+// Suspension
+// ============================================================================
+
+export const SuspensionSchema = z.object({
+  id: z.string().uuid(),
+  playerId: z.string().uuid(),
+  competitionId: z.string().uuid(),
+  reason: z.string(),
+  matchesCount: z.number().int().min(1),
+  matchesServed: z.number().int().min(0).default(0),
+  cardId: z.string().uuid().optional(),
+  startDate: z.date(),
+  endDate: z.date().optional(),
+  isServed: z.boolean().default(false),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type Suspension = z.infer<typeof SuspensionSchema>;
+
+// ============================================================================
+// Notification
+// ============================================================================
+
+export const NotificationSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  type: NotificationTypeSchema,
+  title: z.string().min(1).max(255),
+  message: z.string().min(1).max(1000),
+  data: z.record(z.unknown()).optional(),
+  isRead: z.boolean().default(false),
+  readAt: z.date().optional(),
+  createdAt: z.date(),
+});
+export type Notification = z.infer<typeof NotificationSchema>;
+
+// ============================================================================
+// Audit Log
+// ============================================================================
+
+export const AuditLogSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  action: z.string().min(1).max(100),
+  entityType: z.string().min(1).max(100),
+  entityId: z.string().uuid(),
+  oldValue: z.record(z.unknown()).optional(),
+  newValue: z.record(z.unknown()).optional(),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
+  createdAt: z.date(),
+});
+export type AuditLog = z.infer<typeof AuditLogSchema>;
+
+// ============================================================================
+// Media / News
+// ============================================================================
+
+export const MediaSchema = z.object({
+  id: z.string().uuid(),
+  uploadedBy: z.string().uuid(),
+  type: MediaTypeSchema,
+  url: z.string().url(),
+  filename: z.string().min(1).max(255),
+  fileSize: z.number().int().min(0),
+  mimeType: z.string().max(100),
+  caption: z.string().max(500).optional(),
+  matchId: z.string().uuid().optional(),
+  teamId: z.string().uuid().optional(),
+  playerId: z.string().uuid().optional(),
+  isApproved: z.boolean().default(false),
+  approvedBy: z.string().uuid().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type Media = z.infer<typeof MediaSchema>;
+
+export const CreateMediaSchema = MediaSchema.omit({
+  id: true,
+  isApproved: true,
+  approvedBy: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type CreateMedia = z.infer<typeof CreateMediaSchema>;
+
+export const NewsArticleSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().min(1).max(255),
+  content: z.string().min(1),
+  excerpt: z.string().max(500).optional(),
+  authorId: z.string().uuid(),
+  isPublished: z.boolean().default(false),
+  publishedAt: z.date().optional(),
+  competitionId: z.string().uuid().optional(),
+  teamId: z.string().uuid().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type NewsArticle = z.infer<typeof NewsArticleSchema>;
+
+export const CreateNewsArticleSchema = NewsArticleSchema.omit({
+  id: true,
+  isPublished: true,
+  publishedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type CreateNewsArticle = z.infer<typeof CreateNewsArticleSchema>;
+
+// ============================================================================
+// Standing
+// ============================================================================
+
+export const StandingSchema = z.object({
+  id: z.string().uuid(),
+  competitionId: z.string().uuid(),
+  teamId: z.string().uuid(),
+  groupId: z.string().uuid().optional(),
+  played: z.number().int().min(0).default(0),
+  won: z.number().int().min(0).default(0),
+  drawn: z.number().int().min(0).default(0),
+  lost: z.number().int().min(0).default(0),
+  goalsFor: z.number().int().min(0).default(0),
+  goalsAgainst: z.number().int().min(0).default(0),
+  goalDifference: z.number().int().default(0),
+  points: z.number().int().min(0).default(0),
+  position: z.number().int().min(1).optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type Standing = z.infer<typeof StandingSchema>;
 
 // ============================================================================
 // Pagination & API Response Helpers
