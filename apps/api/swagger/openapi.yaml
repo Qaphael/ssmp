@@ -1,0 +1,3778 @@
+openapi: 3.0.3
+info:
+  title: SSMP — School Sports Competition Management Platform
+  version: 1.0.0
+  description: Multi-sport competition management API. Single source of truth for all clients.
+  contact:
+    name: Qaphael Design
+    email: opiyoraphaellaflo@gmail.com
+servers:
+  - url: http://localhost:3001
+    description: Development
+tags:
+  - name: Auth
+    description: Authentication and authorization
+  - name: Organizations
+    description: Top-level organization management
+  - name: Seasons
+    description: Season management within organizations
+  - name: Competitions
+    description: Competition setup and configuration
+  - name: Teams
+    description: Team/school management
+  - name: Players
+    description: Player roster management
+  - name: Registrations
+    description: Team registration and approval
+  - name: Rosters
+    description: Roster submission and approval
+  - name: Transfers
+    description: Player transfer requests
+  - name: Fixtures
+    description: Fixture generation and scheduling
+  - name: Matches
+    description: Match lifecycle management
+  - name: Match Events
+    description: Live match events (goals, cards, etc.)
+  - name: Lineups
+    description: Team lineup submission
+  - name: Standings
+    description: Competition standings
+  - name: Officials
+    description: Referee/official management
+  - name: Notifications
+    description: User notifications
+  - name: Audit Logs
+    description: System audit trail
+  - name: Media
+    description: Media uploads and approval
+  - name: News
+    description: News articles and announcements
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        role:
+          type: string
+          enum: &a5
+            - system_admin
+            - comp_admin
+            - registrar
+            - referee_coordinator
+            - media_officer
+            - official
+            - coach
+        isActive:
+          type: boolean
+          default: true
+        lastLoginAt:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+        - role
+        - createdAt
+        - updatedAt
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        logoUrl:
+          type: string
+          format: uri
+        contactEmail:
+          type: string
+          format: email
+        contactPhone:
+          type: string
+        address:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+    Season:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        startDate:
+          type: string
+        endDate:
+          type: string
+        isArchived:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - organizationId
+        - name
+        - startDate
+        - endDate
+        - createdAt
+        - updatedAt
+    Competition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        seasonId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        sport:
+          type: string
+          enum: &a4
+            - football
+            - basketball
+            - volleyball
+            - athletics
+            - swimming
+            - other
+        division:
+          type: string
+          maxLength: 100
+        status:
+          type: string
+          enum: &a6
+            - draft
+            - setup
+            - registration_open
+            - registration_closed
+            - in_progress
+            - completed
+            - archived
+        rules:
+          type: object
+          properties:
+            pointsForWin:
+              type: integer
+              minimum: 0
+              default: 3
+            pointsForDraw:
+              type: integer
+              minimum: 0
+              default: 1
+            pointsForLoss:
+              type: integer
+              minimum: 0
+              default: 0
+            matchDurationMinutes:
+              type: integer
+              minimum: 15
+              maximum: 120
+              default: 90
+            halfTimeDurationMinutes:
+              type: integer
+              minimum: 0
+              maximum: 30
+              default: 15
+            extraTimeDurationMinutes:
+              type: integer
+              minimum: 0
+              maximum: 30
+              default: 15
+            allowedSubstitutions:
+              type: integer
+              minimum: 0
+              maximum: 12
+              default: 5
+            yellowCardsForSuspension:
+              type: integer
+              minimum: 1
+              maximum: 10
+              default: 2
+            suspensionMatches:
+              type: integer
+              minimum: 1
+              maximum: 10
+              default: 1
+            redCardImmediateSuspension:
+              type: boolean
+              default: true
+            walkoverDefaultScoreHome:
+              type: integer
+              minimum: 0
+              maximum: 99
+              default: 3
+            walkoverDefaultScoreAway:
+              type: integer
+              minimum: 0
+              maximum: 99
+              default: 0
+        registrationWindow:
+          type: object
+          properties:
+            opensAt:
+              type: string
+            closesAt:
+              type: string
+          required:
+            - opensAt
+            - closesAt
+        enableGroups:
+          type: boolean
+          default: false
+        enableKnockouts:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - seasonId
+        - name
+        - sport
+        - status
+        - rules
+        - registrationWindow
+        - createdAt
+        - updatedAt
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        competitionId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - competitionId
+        - name
+        - createdAt
+        - updatedAt
+    Pitch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        address:
+          type: string
+        capacity:
+          type: integer
+          minimum: 0
+        surfaceType:
+          type: string
+          maxLength: 50
+        isAvailable:
+          type: boolean
+          default: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - organizationId
+        - name
+        - createdAt
+        - updatedAt
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        competitionId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        schoolName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        logoUrl:
+          type: string
+          format: uri
+        primaryColor:
+          type: string
+          pattern: ^#[0-9A-Fa-f]{6}$
+        secondaryColor:
+          type: string
+          pattern: ^#[0-9A-Fa-f]{6}$
+        registrationStatus:
+          type: string
+          enum: &a1
+            - pending
+            - approved
+            - rejected
+        rosterApprovalStatus:
+          type: string
+          enum: &a2
+            - draft
+            - submitted
+            - approved
+            - rejected
+        coachId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - competitionId
+        - name
+        - schoolName
+        - registrationStatus
+        - rosterApprovalStatus
+        - coachId
+        - createdAt
+        - updatedAt
+    Player:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        jerseyNumber:
+          type: integer
+          minimum: 0
+          maximum: 99
+        position:
+          type: string
+          maxLength: 50
+        dateOfBirth:
+          type: string
+        nationality:
+          type: string
+          maxLength: 100
+        height:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 300
+        weight:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 300
+        photoUrl:
+          type: string
+          format: uri
+        status:
+          type: string
+          enum: &a7
+            - active
+            - injured
+            - suspended
+            - inactive
+        injuryDetails:
+          type: object
+          properties:
+            description:
+              type: string
+              minLength: 1
+              maxLength: 500
+            expectedReturnDate:
+              type: string
+            medicalNotes:
+              type: string
+              maxLength: 1000
+          required:
+            - description
+            - expectedReturnDate
+        suspensionDetails:
+          type: object
+          properties:
+            reason:
+              type: string
+              minLength: 1
+              maxLength: 500
+            matchesRemaining:
+              type: integer
+              minimum: 0
+          required:
+            - reason
+            - matchesRemaining
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - teamId
+        - firstName
+        - lastName
+        - jerseyNumber
+        - dateOfBirth
+        - status
+        - createdAt
+        - updatedAt
+    Coach:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - userId
+        - teamId
+        - firstName
+        - lastName
+        - email
+        - createdAt
+        - updatedAt
+    Official:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        certifications:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+        availability:
+          type: object
+          properties:
+            weekdayEvenings:
+              type: boolean
+              default: true
+            weekends:
+              type: boolean
+              default: true
+            holidays:
+              type: boolean
+              default: false
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - userId
+        - name
+        - email
+        - createdAt
+        - updatedAt
+    TeamRegistration:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        competitionId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        schoolName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        coachEmail:
+          type: string
+          format: email
+        coachFirstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        coachLastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        status:
+          type: string
+          enum: *a1
+        reviewedBy:
+          type: string
+          format: uuid
+        reviewedAt:
+          type: string
+        rejectionReason:
+          type: string
+          maxLength: 500
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - competitionId
+        - teamName
+        - schoolName
+        - coachEmail
+        - coachFirstName
+        - coachLastName
+        - status
+        - createdAt
+        - updatedAt
+    RosterSubmission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        competitionId:
+          type: string
+          format: uuid
+        playerIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+        status:
+          type: string
+          enum: *a2
+        submittedBy:
+          type: string
+          format: uuid
+        reviewedBy:
+          type: string
+          format: uuid
+        reviewedAt:
+          type: string
+        rejectionReason:
+          type: string
+          maxLength: 500
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - teamId
+        - competitionId
+        - playerIds
+        - status
+        - submittedBy
+        - createdAt
+        - updatedAt
+    TransferRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        playerId:
+          type: string
+          format: uuid
+        fromTeamId:
+          type: string
+          format: uuid
+        toTeamId:
+          type: string
+          format: uuid
+        competitionId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        status:
+          type: string
+          enum: &a8
+            - pending
+            - approved
+            - rejected
+        requestedBy:
+          type: string
+          format: uuid
+        reviewedBy:
+          type: string
+          format: uuid
+        reviewedAt:
+          type: string
+        rejectionReason:
+          type: string
+          maxLength: 500
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - playerId
+        - fromTeamId
+        - toTeamId
+        - competitionId
+        - reason
+        - status
+        - requestedBy
+        - createdAt
+        - updatedAt
+    Fixture:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        competitionId:
+          type: string
+          format: uuid
+        matchday:
+          type: integer
+          minimum: 1
+        homeTeamId:
+          type: string
+          format: uuid
+        awayTeamId:
+          type: string
+          format: uuid
+        scheduledAt:
+          type: string
+        pitchId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: &a3
+            - scheduled
+            - officials_assigned
+            - lineups_submitted
+            - lineups_locked
+            - kickoff
+            - half_time
+            - second_half
+            - extra_time
+            - penalties
+            - full_time
+            - report_submitted
+            - verified
+            - published
+            - postponed
+            - cancelled
+            - abandoned
+            - walkover
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - competitionId
+        - matchday
+        - homeTeamId
+        - awayTeamId
+        - scheduledAt
+        - status
+        - createdAt
+        - updatedAt
+    Match:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fixtureId:
+          type: string
+          format: uuid
+        competitionId:
+          type: string
+          format: uuid
+        homeTeamId:
+          type: string
+          format: uuid
+        awayTeamId:
+          type: string
+          format: uuid
+        homeScore:
+          type: integer
+          minimum: 0
+          default: 0
+        awayScore:
+          type: integer
+          minimum: 0
+          default: 0
+        status:
+          type: string
+          enum: *a3
+        pitchId:
+          type: string
+          format: uuid
+        scheduledAt:
+          type: string
+        startedAt:
+          type: string
+        halfTimeAt:
+          type: string
+        endedAt:
+          type: string
+        extraTimeEnabled:
+          type: boolean
+          default: false
+        penaltiesEnabled:
+          type: boolean
+          default: false
+        homePenalties:
+          type: integer
+          minimum: 0
+        awayPenalties:
+          type: integer
+          minimum: 0
+        officialId:
+          type: string
+          format: uuid
+        reportSubmittedAt:
+          type: string
+        verifiedAt:
+          type: string
+        verifiedBy:
+          type: string
+          format: uuid
+        publishedAt:
+          type: string
+        walkoverTeamId:
+          type: string
+          format: uuid
+        walkoverReason:
+          type: string
+          maxLength: 500
+        postponedReason:
+          type: string
+          maxLength: 500
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - fixtureId
+        - competitionId
+        - homeTeamId
+        - awayTeamId
+        - status
+        - scheduledAt
+        - createdAt
+        - updatedAt
+    MatchEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: &a14
+            - kickoff
+            - goal
+            - own_goal
+            - assist
+            - yellow_card
+            - red_card
+            - substitution
+            - half_time
+            - full_time
+            - extra_time_start
+            - penalty_scored
+            - penalty_missed
+        minute:
+          type: integer
+          minimum: 0
+          maximum: 120
+        playerId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        description:
+          type: string
+          maxLength: 500
+        recordedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+      required:
+        - id
+        - matchId
+        - type
+        - minute
+        - recordedBy
+        - createdAt
+    Lineup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        playerIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+          maxItems: 20
+        isStarting:
+          type: boolean
+          default: true
+        isLocked:
+          type: boolean
+          default: false
+        submittedBy:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - matchId
+        - teamId
+        - playerIds
+        - submittedBy
+        - submittedAt
+        - createdAt
+        - updatedAt
+    Card:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        playerId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: &a9
+            - yellow
+            - red
+        minute:
+          type: integer
+          minimum: 0
+          maximum: 120
+        reason:
+          type: string
+          maxLength: 500
+        competitionId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+      required:
+        - id
+        - matchId
+        - playerId
+        - teamId
+        - type
+        - minute
+        - competitionId
+        - createdAt
+    Suspension:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        playerId:
+          type: string
+          format: uuid
+        competitionId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        matchesCount:
+          type: integer
+          minimum: 1
+        matchesServed:
+          type: integer
+          minimum: 0
+          default: 0
+        cardId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+        endDate:
+          type: string
+        isServed:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - playerId
+        - competitionId
+        - reason
+        - matchesCount
+        - startDate
+        - createdAt
+        - updatedAt
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: &a10
+            - fixture_published
+            - fixture_changed
+            - official_assigned
+            - roster_approved
+            - roster_rejected
+            - transfer_approved
+            - transfer_rejected
+            - suspension_applied
+            - kickoff_reminder
+            - match_postponed
+            - match_cancelled
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        message:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        data:
+          type: object
+          additionalProperties:
+            nullable: true
+        isRead:
+          type: boolean
+          default: false
+        readAt:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - type
+        - title
+        - message
+        - createdAt
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        action:
+          type: string
+          minLength: 1
+          maxLength: 100
+        entityType:
+          type: string
+          minLength: 1
+          maxLength: 100
+        entityId:
+          type: string
+          format: uuid
+        oldValue:
+          type: object
+          additionalProperties:
+            nullable: true
+        newValue:
+          type: object
+          additionalProperties:
+            nullable: true
+        ipAddress:
+          type: string
+          format: ip
+        userAgent:
+          type: string
+          maxLength: 500
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - action
+        - entityType
+        - entityId
+        - createdAt
+    Media:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        uploadedBy:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: &a11
+            - logo
+            - photo
+            - video
+            - document
+        url:
+          type: string
+          format: uri
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 255
+        fileSize:
+          type: integer
+          minimum: 0
+        mimeType:
+          type: string
+          maxLength: 100
+        caption:
+          type: string
+          maxLength: 500
+        matchId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        playerId:
+          type: string
+          format: uuid
+        isApproved:
+          type: boolean
+          default: false
+        approvedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - uploadedBy
+        - type
+        - url
+        - filename
+        - fileSize
+        - mimeType
+        - createdAt
+        - updatedAt
+    NewsArticle:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        content:
+          type: string
+          minLength: 1
+        excerpt:
+          type: string
+          maxLength: 500
+        authorId:
+          type: string
+          format: uuid
+        isPublished:
+          type: boolean
+          default: false
+        publishedAt:
+          type: string
+        competitionId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - title
+        - content
+        - authorId
+        - createdAt
+        - updatedAt
+    Standing:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        competitionId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        played:
+          type: integer
+          minimum: 0
+          default: 0
+        won:
+          type: integer
+          minimum: 0
+          default: 0
+        drawn:
+          type: integer
+          minimum: 0
+          default: 0
+        lost:
+          type: integer
+          minimum: 0
+          default: 0
+        goalsFor:
+          type: integer
+          minimum: 0
+          default: 0
+        goalsAgainst:
+          type: integer
+          minimum: 0
+          default: 0
+        goalDifference:
+          type: integer
+          default: 0
+        points:
+          type: integer
+          minimum: 0
+          default: 0
+        position:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - competitionId
+        - teamId
+        - createdAt
+        - updatedAt
+    Sport:
+      type: string
+      enum: *a4
+    UserRole:
+      type: string
+      enum: *a5
+    CompetitionStatus:
+      type: string
+      enum: *a6
+    RegistrationStatus:
+      type: string
+      enum: *a1
+    RosterApprovalStatus:
+      type: string
+      enum: *a2
+    PlayerStatus:
+      type: string
+      enum: *a7
+    TransferStatus:
+      type: string
+      enum: *a8
+    MatchStatus:
+      type: string
+      enum: *a3
+    CardType:
+      type: string
+      enum: *a9
+    NotificationType:
+      type: string
+      enum: *a10
+    MediaType:
+      type: string
+      enum: *a11
+  parameters: {}
+paths:
+  /api/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login with email and password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+              required:
+                - email
+                - password
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      email:
+                        type: string
+                        format: email
+                      firstName:
+                        type: string
+                        minLength: 1
+                        maxLength: 100
+                      lastName:
+                        type: string
+                        minLength: 1
+                        maxLength: 100
+                      role:
+                        type: string
+                        enum: *a5
+                      isActive:
+                        type: boolean
+                        default: true
+                      lastLoginAt:
+                        type: string
+                      createdAt:
+                        type: string
+                      updatedAt:
+                        type: string
+                    required:
+                      - id
+                      - email
+                      - firstName
+                      - lastName
+                      - role
+                      - createdAt
+                      - updatedAt
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  expiresIn:
+                    type: integer
+                    minimum: 0
+                    exclusiveMinimum: true
+                required:
+                  - user
+                  - accessToken
+                  - refreshToken
+                  - expiresIn
+        "401":
+          description: Invalid credentials
+  /api/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                firstName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                lastName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                role:
+                  type: string
+                  enum: *a5
+              required:
+                - email
+                - password
+                - firstName
+                - lastName
+                - role
+      responses:
+        "201":
+          description: User registered
+        "409":
+          description: Email already exists
+  /api/auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Refresh access token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+              required:
+                - refreshToken
+      responses:
+        "200":
+          description: Token refreshed
+  /api/auth/password-reset:
+    post:
+      tags:
+        - Auth
+      summary: Request password reset
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required:
+                - email
+      responses:
+        "200":
+          description: Reset email sent
+  /api/auth/password-reset/confirm:
+    post:
+      tags:
+        - Auth
+      summary: Confirm password reset
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+              required:
+                - token
+                - newPassword
+      responses:
+        "200":
+          description: Password updated
+  /api/auth/change-password:
+    post:
+      tags:
+        - Auth
+      summary: Change password (authenticated)
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                currentPassword:
+                  type: string
+                  minLength: 8
+                newPassword:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+              required:
+                - currentPassword
+                - newPassword
+      responses:
+        "200":
+          description: Password changed
+  /api/organizations:
+    get:
+      tags:
+        - Organizations
+      summary: List organizations
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of organizations
+    post:
+      tags:
+        - Organizations
+      summary: Create organization
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                description:
+                  type: string
+                logoUrl:
+                  type: string
+                  format: uri
+                contactEmail:
+                  type: string
+                  format: email
+                contactPhone:
+                  type: string
+                address:
+                  type: string
+              required:
+                - name
+      responses:
+        "201":
+          description: Organization created
+  /api/organizations/{id}:
+    get:
+      tags:
+        - Organizations
+      summary: Get organization by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Organization details
+    patch:
+      tags:
+        - Organizations
+      summary: Update organization
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                description:
+                  type: string
+                logoUrl:
+                  type: string
+                  format: uri
+                contactEmail:
+                  type: string
+                  format: email
+                contactPhone:
+                  type: string
+                address:
+                  type: string
+      responses:
+        "200":
+          description: Organization updated
+  /api/seasons:
+    get:
+      tags:
+        - Seasons
+      summary: List seasons
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of seasons
+    post:
+      tags:
+        - Seasons
+      summary: Create season
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organizationId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                startDate:
+                  type: string
+                endDate:
+                  type: string
+              required:
+                - organizationId
+                - name
+                - startDate
+                - endDate
+      responses:
+        "201":
+          description: Season created
+  /api/seasons/{id}:
+    get:
+      tags:
+        - Seasons
+      summary: Get season by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Season details
+    patch:
+      tags:
+        - Seasons
+      summary: Update season
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organizationId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                startDate:
+                  type: string
+                endDate:
+                  type: string
+      responses:
+        "200":
+          description: Season updated
+  /api/competitions:
+    get:
+      tags:
+        - Competitions
+      summary: List competitions
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: seasonId
+          in: query
+        - schema:
+            type: string
+            enum: *a4
+          required: false
+          name: sport
+          in: query
+        - schema:
+            type: string
+            enum: *a6
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            maxLength: 255
+          required: false
+          name: search
+          in: query
+        - schema:
+            type: string
+            enum:
+              - name
+              - createdAt
+              - status
+            default: createdAt
+          required: false
+          name: sortBy
+          in: query
+        - schema:
+            type: string
+            enum: &a12
+              - asc
+              - desc
+            default: desc
+          required: false
+          name: sortOrder
+          in: query
+      responses:
+        "200":
+          description: List of competitions
+    post:
+      tags:
+        - Competitions
+      summary: Create competition (Competition Wizard)
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                seasonId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                sport:
+                  type: string
+                  enum: *a4
+                division:
+                  type: string
+                  maxLength: 100
+                rules:
+                  type: object
+                  properties:
+                    pointsForWin:
+                      type: integer
+                      minimum: 0
+                      default: 3
+                    pointsForDraw:
+                      type: integer
+                      minimum: 0
+                      default: 1
+                    pointsForLoss:
+                      type: integer
+                      minimum: 0
+                      default: 0
+                    matchDurationMinutes:
+                      type: integer
+                      minimum: 15
+                      maximum: 120
+                      default: 90
+                    halfTimeDurationMinutes:
+                      type: integer
+                      minimum: 0
+                      maximum: 30
+                      default: 15
+                    extraTimeDurationMinutes:
+                      type: integer
+                      minimum: 0
+                      maximum: 30
+                      default: 15
+                    allowedSubstitutions:
+                      type: integer
+                      minimum: 0
+                      maximum: 12
+                      default: 5
+                    yellowCardsForSuspension:
+                      type: integer
+                      minimum: 1
+                      maximum: 10
+                      default: 2
+                    suspensionMatches:
+                      type: integer
+                      minimum: 1
+                      maximum: 10
+                      default: 1
+                    redCardImmediateSuspension:
+                      type: boolean
+                      default: true
+                    walkoverDefaultScoreHome:
+                      type: integer
+                      minimum: 0
+                      maximum: 99
+                      default: 3
+                    walkoverDefaultScoreAway:
+                      type: integer
+                      minimum: 0
+                      maximum: 99
+                      default: 0
+                registrationWindow:
+                  type: object
+                  properties:
+                    opensAt:
+                      type: string
+                    closesAt:
+                      type: string
+                  required:
+                    - opensAt
+                    - closesAt
+                enableGroups:
+                  type: boolean
+                  default: false
+                enableKnockouts:
+                  type: boolean
+                  default: false
+              required:
+                - seasonId
+                - name
+                - sport
+                - registrationWindow
+      responses:
+        "201":
+          description: Competition created
+  /api/competitions/{id}:
+    get:
+      tags:
+        - Competitions
+      summary: Get competition by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Competition details
+    patch:
+      tags:
+        - Competitions
+      summary: Update competition
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                seasonId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                sport:
+                  type: string
+                  enum: *a4
+                division:
+                  type: string
+                  maxLength: 100
+                rules:
+                  type: object
+                  properties:
+                    pointsForWin:
+                      type: integer
+                      minimum: 0
+                      default: 3
+                    pointsForDraw:
+                      type: integer
+                      minimum: 0
+                      default: 1
+                    pointsForLoss:
+                      type: integer
+                      minimum: 0
+                      default: 0
+                    matchDurationMinutes:
+                      type: integer
+                      minimum: 15
+                      maximum: 120
+                      default: 90
+                    halfTimeDurationMinutes:
+                      type: integer
+                      minimum: 0
+                      maximum: 30
+                      default: 15
+                    extraTimeDurationMinutes:
+                      type: integer
+                      minimum: 0
+                      maximum: 30
+                      default: 15
+                    allowedSubstitutions:
+                      type: integer
+                      minimum: 0
+                      maximum: 12
+                      default: 5
+                    yellowCardsForSuspension:
+                      type: integer
+                      minimum: 1
+                      maximum: 10
+                      default: 2
+                    suspensionMatches:
+                      type: integer
+                      minimum: 1
+                      maximum: 10
+                      default: 1
+                    redCardImmediateSuspension:
+                      type: boolean
+                      default: true
+                    walkoverDefaultScoreHome:
+                      type: integer
+                      minimum: 0
+                      maximum: 99
+                      default: 3
+                    walkoverDefaultScoreAway:
+                      type: integer
+                      minimum: 0
+                      maximum: 99
+                      default: 0
+                registrationWindow:
+                  type: object
+                  properties:
+                    opensAt:
+                      type: string
+                    closesAt:
+                      type: string
+                  required:
+                    - opensAt
+                    - closesAt
+                enableGroups:
+                  type: boolean
+                  default: false
+                enableKnockouts:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Competition updated
+  /api/teams:
+    get:
+      tags:
+        - Teams
+      summary: List teams
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: competitionId
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: groupId
+          in: query
+        - schema:
+            type: string
+            enum: *a1
+          required: false
+          name: registrationStatus
+          in: query
+        - schema:
+            type: string
+            enum: *a2
+          required: false
+          name: rosterApprovalStatus
+          in: query
+        - schema:
+            type: string
+            maxLength: 255
+          required: false
+          name: search
+          in: query
+        - schema:
+            type: string
+            enum:
+              - name
+              - schoolName
+              - createdAt
+            default: createdAt
+          required: false
+          name: sortBy
+          in: query
+        - schema:
+            type: string
+            enum: *a12
+            default: desc
+          required: false
+          name: sortOrder
+          in: query
+      responses:
+        "200":
+          description: List of teams
+    post:
+      tags:
+        - Teams
+      summary: Create team
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                competitionId:
+                  type: string
+                  format: uuid
+                groupId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                schoolName:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                description:
+                  type: string
+                logoUrl:
+                  type: string
+                  format: uri
+                primaryColor:
+                  type: string
+                  pattern: ^#[0-9A-Fa-f]{6}$
+                secondaryColor:
+                  type: string
+                  pattern: ^#[0-9A-Fa-f]{6}$
+              required:
+                - competitionId
+                - name
+                - schoolName
+      responses:
+        "201":
+          description: Team created
+  /api/teams/{id}:
+    get:
+      tags:
+        - Teams
+      summary: Get team by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Team details
+    patch:
+      tags:
+        - Teams
+      summary: Update team
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                competitionId:
+                  type: string
+                  format: uuid
+                groupId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                schoolName:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                description:
+                  type: string
+                logoUrl:
+                  type: string
+                  format: uri
+                primaryColor:
+                  type: string
+                  pattern: ^#[0-9A-Fa-f]{6}$
+                secondaryColor:
+                  type: string
+                  pattern: ^#[0-9A-Fa-f]{6}$
+      responses:
+        "200":
+          description: Team updated
+  /api/players:
+    get:
+      tags:
+        - Players
+      summary: List players
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: teamId
+          in: query
+        - schema:
+            type: string
+            enum: *a7
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            maxLength: 50
+          required: false
+          name: position
+          in: query
+        - schema:
+            type: string
+            maxLength: 255
+          required: false
+          name: search
+          in: query
+        - schema:
+            type: string
+            enum:
+              - lastName
+              - jerseyNumber
+              - createdAt
+            default: lastName
+          required: false
+          name: sortBy
+          in: query
+        - schema:
+            type: string
+            enum: *a12
+            default: asc
+          required: false
+          name: sortOrder
+          in: query
+      responses:
+        "200":
+          description: List of players
+    post:
+      tags:
+        - Players
+      summary: Create player
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamId:
+                  type: string
+                  format: uuid
+                firstName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                lastName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                jerseyNumber:
+                  type: integer
+                  minimum: 0
+                  maximum: 99
+                position:
+                  type: string
+                  maxLength: 50
+                dateOfBirth:
+                  type: string
+                nationality:
+                  type: string
+                  maxLength: 100
+                height:
+                  type: number
+                  minimum: 0
+                  exclusiveMinimum: true
+                  maximum: 300
+                weight:
+                  type: number
+                  minimum: 0
+                  exclusiveMinimum: true
+                  maximum: 300
+                photoUrl:
+                  type: string
+                  format: uri
+              required:
+                - teamId
+                - firstName
+                - lastName
+                - jerseyNumber
+                - dateOfBirth
+      responses:
+        "201":
+          description: Player created
+  /api/players/{id}:
+    get:
+      tags:
+        - Players
+      summary: Get player by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Player details
+    patch:
+      tags:
+        - Players
+      summary: Update player
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamId:
+                  type: string
+                  format: uuid
+                firstName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                lastName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                jerseyNumber:
+                  type: integer
+                  minimum: 0
+                  maximum: 99
+                position:
+                  type: string
+                  maxLength: 50
+                dateOfBirth:
+                  type: string
+                nationality:
+                  type: string
+                  maxLength: 100
+                height:
+                  type: number
+                  minimum: 0
+                  exclusiveMinimum: true
+                  maximum: 300
+                weight:
+                  type: number
+                  minimum: 0
+                  exclusiveMinimum: true
+                  maximum: 300
+                photoUrl:
+                  type: string
+                  format: uri
+      responses:
+        "200":
+          description: Player updated
+  /api/registrations:
+    get:
+      tags:
+        - Registrations
+      summary: List team registrations
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: competitionId
+          in: query
+        - schema:
+            type: string
+            enum: *a1
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            maxLength: 255
+          required: false
+          name: search
+          in: query
+        - schema:
+            type: string
+            enum:
+              - teamName
+              - schoolName
+              - createdAt
+            default: createdAt
+          required: false
+          name: sortBy
+          in: query
+        - schema:
+            type: string
+            enum: *a12
+            default: desc
+          required: false
+          name: sortOrder
+          in: query
+      responses:
+        "200":
+          description: List of registrations
+    post:
+      tags:
+        - Registrations
+      summary: Submit team registration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                competitionId:
+                  type: string
+                  format: uuid
+                teamName:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                schoolName:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                coachEmail:
+                  type: string
+                  format: email
+                coachFirstName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                coachLastName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+              required:
+                - competitionId
+                - teamName
+                - schoolName
+                - coachEmail
+                - coachFirstName
+                - coachLastName
+      responses:
+        "201":
+          description: Registration submitted
+  /api/registrations/{id}:
+    get:
+      tags:
+        - Registrations
+      summary: Get registration by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Registration details
+  /api/registrations/{id}/review:
+    patch:
+      tags:
+        - Registrations
+      summary: Approve or reject registration
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - approved
+                    - rejected
+                rejectionReason:
+                  type: string
+                  maxLength: 500
+              required:
+                - status
+      responses:
+        "200":
+          description: Registration reviewed
+  /api/rosters:
+    post:
+      tags:
+        - Rosters
+      summary: Submit roster for approval
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamId:
+                  type: string
+                  format: uuid
+                competitionId:
+                  type: string
+                  format: uuid
+                playerIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  minItems: 1
+              required:
+                - teamId
+                - competitionId
+                - playerIds
+      responses:
+        "201":
+          description: Roster submitted
+  /api/rosters/{id}:
+    get:
+      tags:
+        - Rosters
+      summary: Get roster submission by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Roster details
+  /api/rosters/{id}/review:
+    patch:
+      tags:
+        - Rosters
+      summary: Approve or reject roster
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - approved
+                    - rejected
+                rejectionReason:
+                  type: string
+                  maxLength: 500
+              required:
+                - status
+      responses:
+        "200":
+          description: Roster reviewed
+  /api/transfers:
+    get:
+      tags:
+        - Transfers
+      summary: List transfer requests
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of transfers
+    post:
+      tags:
+        - Transfers
+      summary: Submit transfer request
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                fromTeamId:
+                  type: string
+                  format: uuid
+                toTeamId:
+                  type: string
+                  format: uuid
+                competitionId:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+              required:
+                - playerId
+                - fromTeamId
+                - toTeamId
+                - competitionId
+                - reason
+      responses:
+        "201":
+          description: Transfer request submitted
+  /api/transfers/{id}:
+    get:
+      tags:
+        - Transfers
+      summary: Get transfer by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Transfer details
+  /api/transfers/{id}/review:
+    patch:
+      tags:
+        - Transfers
+      summary: Approve or reject transfer
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - approved
+                    - rejected
+                rejectionReason:
+                  type: string
+                  maxLength: 500
+              required:
+                - status
+      responses:
+        "200":
+          description: Transfer reviewed
+  /api/fixtures:
+    get:
+      tags:
+        - Fixtures
+      summary: List fixtures
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: competitionId
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: teamId
+          in: query
+        - schema:
+            type: string
+            enum: *a3
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: dateFrom
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: dateTo
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+          required: false
+          name: matchday
+          in: query
+        - schema:
+            type: string
+            enum: &a13
+              - scheduledAt
+              - status
+              - createdAt
+            default: scheduledAt
+          required: false
+          name: sortBy
+          in: query
+        - schema:
+            type: string
+            enum: *a12
+            default: asc
+          required: false
+          name: sortOrder
+          in: query
+      responses:
+        "200":
+          description: List of fixtures
+    post:
+      tags:
+        - Fixtures
+      summary: Create fixture
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                competitionId:
+                  type: string
+                  format: uuid
+                matchday:
+                  type: integer
+                  minimum: 1
+                homeTeamId:
+                  type: string
+                  format: uuid
+                awayTeamId:
+                  type: string
+                  format: uuid
+                scheduledAt:
+                  type: string
+                pitchId:
+                  type: string
+                  format: uuid
+              required:
+                - competitionId
+                - matchday
+                - homeTeamId
+                - awayTeamId
+                - scheduledAt
+      responses:
+        "201":
+          description: Fixture created
+  /api/fixtures/bulk:
+    post:
+      tags:
+        - Fixtures
+      summary: Bulk create fixtures
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                competitionId:
+                  type: string
+                  format: uuid
+                fixtures:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      competitionId:
+                        type: string
+                        format: uuid
+                      matchday:
+                        type: integer
+                        minimum: 1
+                      homeTeamId:
+                        type: string
+                        format: uuid
+                      awayTeamId:
+                        type: string
+                        format: uuid
+                      scheduledAt:
+                        type: string
+                      pitchId:
+                        type: string
+                        format: uuid
+                    required:
+                      - competitionId
+                      - matchday
+                      - homeTeamId
+                      - awayTeamId
+                      - scheduledAt
+                  minItems: 1
+                  maxItems: 100
+              required:
+                - competitionId
+                - fixtures
+      responses:
+        "201":
+          description: Fixtures created
+  /api/fixtures/{id}:
+    patch:
+      tags:
+        - Fixtures
+      summary: Update fixture
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                competitionId:
+                  type: string
+                  format: uuid
+                matchday:
+                  type: integer
+                  minimum: 1
+                homeTeamId:
+                  type: string
+                  format: uuid
+                awayTeamId:
+                  type: string
+                  format: uuid
+                scheduledAt:
+                  type: string
+                pitchId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Fixture updated
+  /api/matches:
+    get:
+      tags:
+        - Matches
+      summary: List matches
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: competitionId
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: teamId
+          in: query
+        - schema:
+            type: string
+            enum: *a3
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: dateFrom
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: dateTo
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+          required: false
+          name: matchday
+          in: query
+        - schema:
+            type: string
+            enum: *a13
+            default: scheduledAt
+          required: false
+          name: sortBy
+          in: query
+        - schema:
+            type: string
+            enum: *a12
+            default: asc
+          required: false
+          name: sortOrder
+          in: query
+      responses:
+        "200":
+          description: List of matches
+    post:
+      tags:
+        - Matches
+      summary: Create match
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fixtureId:
+                  type: string
+                  format: uuid
+                competitionId:
+                  type: string
+                  format: uuid
+                homeTeamId:
+                  type: string
+                  format: uuid
+                awayTeamId:
+                  type: string
+                  format: uuid
+                scheduledAt:
+                  type: string
+                pitchId:
+                  type: string
+                  format: uuid
+                officialId:
+                  type: string
+                  format: uuid
+              required:
+                - fixtureId
+                - competitionId
+                - homeTeamId
+                - awayTeamId
+                - scheduledAt
+      responses:
+        "201":
+          description: Match created
+  /api/matches/{id}:
+    get:
+      tags:
+        - Matches
+      summary: Get match by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Match details
+  /api/matches/{id}/status:
+    patch:
+      tags:
+        - Matches
+      summary: Update match status
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: *a3
+              required:
+                - status
+      responses:
+        "200":
+          description: Match status updated
+  /api/matches/{id}/walkover:
+    post:
+      tags:
+        - Matches
+      summary: Record walkover
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                walkoverTeamId:
+                  type: string
+                  format: uuid
+                walkoverReason:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+              required:
+                - walkoverTeamId
+                - walkoverReason
+      responses:
+        "200":
+          description: Walkover recorded
+  /api/matches/{id}/postpone:
+    post:
+      tags:
+        - Matches
+      summary: Postpone match
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                postponedReason:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                newScheduledAt:
+                  type: string
+              required:
+                - postponedReason
+      responses:
+        "200":
+          description: Match postponed
+  /api/matches/{id}/verify:
+    post:
+      tags:
+        - Matches
+      summary: Verify match report
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Match verified and standings updated
+  /api/matches/{matchId}/events:
+    get:
+      tags:
+        - Match Events
+      summary: List match events
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: matchId
+          in: path
+      responses:
+        "200":
+          description: List of match events
+    post:
+      tags:
+        - Match Events
+      summary: Record match event
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: matchId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                matchId:
+                  type: string
+                  format: uuid
+                type:
+                  type: string
+                  enum: *a14
+                minute:
+                  type: integer
+                  minimum: 0
+                  maximum: 120
+                playerId:
+                  type: string
+                  format: uuid
+                teamId:
+                  type: string
+                  format: uuid
+                description:
+                  type: string
+                  maxLength: 500
+                recordedBy:
+                  type: string
+                  format: uuid
+              required:
+                - matchId
+                - type
+                - minute
+                - recordedBy
+      responses:
+        "201":
+          description: Event recorded
+  /api/matches/{matchId}/lineups:
+    get:
+      tags:
+        - Lineups
+      summary: Get lineups for match
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: matchId
+          in: path
+      responses:
+        "200":
+          description: Match lineups
+    post:
+      tags:
+        - Lineups
+      summary: Submit lineup
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: matchId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                matchId:
+                  type: string
+                  format: uuid
+                teamId:
+                  type: string
+                  format: uuid
+                playerIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  minItems: 1
+                  maxItems: 20
+                isStarting:
+                  type: boolean
+                  default: true
+                submittedBy:
+                  type: string
+                  format: uuid
+              required:
+                - matchId
+                - teamId
+                - playerIds
+                - submittedBy
+      responses:
+        "201":
+          description: Lineup submitted
+  /api/competitions/{competitionId}/standings:
+    get:
+      tags:
+        - Standings
+      summary: Get competition standings
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: competitionId
+          in: path
+      responses:
+        "200":
+          description: Competition standings
+  /api/officials:
+    get:
+      tags:
+        - Officials
+      summary: List officials
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            maxLength: 255
+          required: false
+          name: search
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: certification
+          in: query
+        - schema:
+            type: string
+            enum:
+              - name
+              - createdAt
+            default: name
+          required: false
+          name: sortBy
+          in: query
+        - schema:
+            type: string
+            enum: *a12
+            default: asc
+          required: false
+          name: sortOrder
+          in: query
+      responses:
+        "200":
+          description: List of officials
+    post:
+      tags:
+        - Officials
+      summary: Create official
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                certifications:
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 100
+                availability:
+                  type: object
+                  properties:
+                    weekdayEvenings:
+                      type: boolean
+                      default: true
+                    weekends:
+                      type: boolean
+                      default: true
+                    holidays:
+                      type: boolean
+                      default: false
+              required:
+                - userId
+                - name
+                - email
+      responses:
+        "201":
+          description: Official created
+  /api/officials/{id}:
+    get:
+      tags:
+        - Officials
+      summary: Get official by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Official details
+    patch:
+      tags:
+        - Officials
+      summary: Update official
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                certifications:
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 100
+                availability:
+                  type: object
+                  properties:
+                    weekdayEvenings:
+                      type: boolean
+                      default: true
+                    weekends:
+                      type: boolean
+                      default: true
+                    holidays:
+                      type: boolean
+                      default: false
+      responses:
+        "200":
+          description: Official updated
+  /api/notifications:
+    get:
+      tags:
+        - Notifications
+      summary: List notifications
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of notifications
+  /api/notifications/read:
+    patch:
+      tags:
+        - Notifications
+      summary: Mark notifications as read
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  minItems: 1
+              required:
+                - ids
+      responses:
+        "200":
+          description: Notifications marked as read
+  /api/audit-logs:
+    get:
+      tags:
+        - Audit Logs
+      summary: List audit logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: userId
+          in: query
+        - schema:
+            type: string
+            maxLength: 100
+          required: false
+          name: entityType
+          in: query
+        - schema:
+            type: string
+            format: uuid
+          required: false
+          name: entityId
+          in: query
+        - schema:
+            type: string
+            maxLength: 100
+          required: false
+          name: action
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: dateFrom
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: dateTo
+          in: query
+        - schema:
+            type: string
+            enum:
+              - createdAt
+            default: createdAt
+          required: false
+          name: sortBy
+          in: query
+        - schema:
+            type: string
+            enum: *a12
+            default: desc
+          required: false
+          name: sortOrder
+          in: query
+      responses:
+        "200":
+          description: List of audit logs
+  /api/media:
+    get:
+      tags:
+        - Media
+      summary: List media
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of media
+  /api/media/{id}/approve:
+    post:
+      tags:
+        - Media
+      summary: Approve media
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                approvedBy:
+                  type: string
+                  format: uuid
+              required:
+                - approvedBy
+      responses:
+        "200":
+          description: Media approved
+  /api/news:
+    get:
+      tags:
+        - News
+      summary: List news articles
+      responses:
+        "200":
+          description: List of news articles
+    post:
+      tags:
+        - News
+      summary: Create news article
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                content:
+                  type: string
+                  minLength: 1
+                excerpt:
+                  type: string
+                  maxLength: 500
+                authorId:
+                  type: string
+                  format: uuid
+                competitionId:
+                  type: string
+                  format: uuid
+                teamId:
+                  type: string
+                  format: uuid
+              required:
+                - title
+                - content
+                - authorId
+      responses:
+        "201":
+          description: News article created
+  /api/news/{id}:
+    patch:
+      tags:
+        - News
+      summary: Update news article
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                content:
+                  type: string
+                  minLength: 1
+                excerpt:
+                  type: string
+                  maxLength: 500
+                authorId:
+                  type: string
+                  format: uuid
+                competitionId:
+                  type: string
+                  format: uuid
+                teamId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: News article updated
+  /api/news/{id}/publish:
+    patch:
+      tags:
+        - News
+      summary: Publish/unpublish news article
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isPublished:
+                  type: boolean
+              required:
+                - isPublished
+      responses:
+        "200":
+          description: Publish status updated

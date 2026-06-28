@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+
+extendZodWithOpenApi(z);
 
 // ============================================================================
 // Constants
@@ -180,7 +183,48 @@ export const ChangePasswordSchema = z.object({
 });
 export type ChangePassword = z.infer<typeof ChangePasswordSchema>;
 
+// ============================================================================
+// User
+// ============================================================================
 
+export const UserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  role: UserRoleSchema,
+  isActive: z.boolean().default(true),
+  lastLoginAt: z.date().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type User = z.infer<typeof UserSchema>;
+
+export const LoginResponseSchema = z.object({
+  user: UserSchema,
+  accessToken: z.string(),
+  refreshToken: z.string(),
+  expiresIn: z.number().int().positive(),
+});
+export type LoginResponse = z.infer<typeof LoginResponseSchema>;
+
+export const CreateUserSchema = UserSchema.omit({
+  id: true,
+  isActive: true,
+  lastLoginAt: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  password: z.string().min(8).max(128),
+});
+export type CreateUser = z.infer<typeof CreateUserSchema>;
+
+export const UpdateUserSchema = UserSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial();
+export type UpdateUser = z.infer<typeof UpdateUserSchema>;
 
 // ============================================================================
 // Query / Filter Schemas
@@ -298,41 +342,6 @@ export const CsvImportResultSchema = z.object({
   })),
 });
 export type CsvImportResult = z.infer<typeof CsvImportResultSchema>;
-
-// ============================================================================
-// User
-// ============================================================================
-
-export const UserSchema = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
-  firstName: z.string().min(1).max(100),
-  lastName: z.string().min(1).max(100),
-  role: UserRoleSchema,
-  isActive: z.boolean().default(true),
-  lastLoginAt: z.date().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-export type User = z.infer<typeof UserSchema>;
-
-export const CreateUserSchema = UserSchema.omit({
-  id: true,
-  isActive: true,
-  lastLoginAt: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  password: z.string().min(8).max(128),
-});
-export type CreateUser = z.infer<typeof CreateUserSchema>;
-
-export const UpdateUserSchema = UserSchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).partial();
-export type UpdateUser = z.infer<typeof UpdateUserSchema>;
 
 // ============================================================================
 // Organization
