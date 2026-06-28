@@ -774,6 +774,22 @@ components:
             - cancelled
             - abandoned
             - walkover
+        homeScore:
+          type: integer
+          minimum: 0
+        awayScore:
+          type: integer
+          minimum: 0
+        officialId:
+          type: string
+          format: uuid
+        postponedReason:
+          type: string
+        walkoverTeamId:
+          type: string
+          format: uuid
+        walkoverReason:
+          type: string
         createdAt:
           type: string
         updatedAt:

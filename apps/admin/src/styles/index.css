@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  --font-serif: "Fraunces", Georgia, serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-editorial-cream: #FBFBF9;
+  --color-editorial-charcoal: #121212;
+  --color-editorial-red: #D43D2A;
+  --color-editorial-border: #E5E5E1;
+}
+
+body {
+  background-color: #FBFBF9;
+  color: #121212;
+  font-family: "Inter", sans-serif;
+}
+
+/* Custom editorial aesthetics classes */
+.editorial-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.editorial-btn-primary {
+  background-color: #D43D2A;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid #D43D2A;
+  transition: all 0.2s ease;
+}
+.editorial-btn-primary:hover {
+  background-color: #121212;
+  border-color: #121212;
+}
+
+.editorial-btn-secondary {
+  background-color: transparent;
+  color: #121212;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid #121212;
+  transition: all 0.2s ease;
+}
+.editorial-btn-secondary:hover {
+  background-color: #121212;
+  color: #ffffff;
+}
+
+.editorial-btn-accent {
+  background-color: #121212;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid #121212;
+  transition: all 0.2s ease;
+}
+.editorial-btn-accent:hover {
+  background-color: transparent;
+  color: #121212;
+}
+
+.editorial-card {
+  background-color: #ffffff;
+  border: 1px solid #E5E5E1;
+  box-shadow: none;
+}
+
+.editorial-header-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+  color: #8b8b85;
+}

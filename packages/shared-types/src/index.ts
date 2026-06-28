@@ -194,9 +194,9 @@ export const UserSchema = z.object({
   lastName: z.string().min(1).max(100),
   role: UserRoleSchema,
   isActive: z.boolean().default(true),
-  lastLoginAt: z.date().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  lastLoginAt: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type User = z.infer<typeof UserSchema>;
 
@@ -274,8 +274,8 @@ export const MatchFilterSchema = PaginationSchema.extend({
   competitionId: z.string().uuid().optional(),
   teamId: z.string().uuid().optional(),
   status: MatchStatusSchema.optional(),
-  dateFrom: z.date().optional(),
-  dateTo: z.date().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
   matchday: z.number().int().min(1).optional(),
   sortBy: z.enum(['scheduledAt', 'status', 'createdAt']).default('scheduledAt'),
   sortOrder: SortOrderSchema.default('asc'),
@@ -304,8 +304,8 @@ export const AuditLogFilterSchema = PaginationSchema.extend({
   entityType: z.string().max(100).optional(),
   entityId: z.string().uuid().optional(),
   action: z.string().max(100).optional(),
-  dateFrom: z.date().optional(),
-  dateTo: z.date().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
   sortBy: z.enum(['createdAt']).default('createdAt'),
   sortOrder: SortOrderSchema.default('desc'),
 });
@@ -355,8 +355,8 @@ export const OrganizationSchema = z.object({
   contactEmail: z.string().email().optional(),
   contactPhone: z.string().optional(),
   address: z.string().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Organization = z.infer<typeof OrganizationSchema>;
 
@@ -378,19 +378,19 @@ export const SeasonSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string().uuid(),
   name: z.string().min(1).max(100),
-  startDate: z.date(),
-  endDate: z.date(),
+  startDate: z.string(),
+  endDate: z.string(),
   isArchived: z.boolean().default(false),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Season = z.infer<typeof SeasonSchema>;
 
 export const CreateSeasonSchema = z.object({
   organizationId: z.string().uuid(),
   name: z.string().min(1).max(100),
-  startDate: z.date(),
-  endDate: z.date(),
+  startDate: z.string(),
+  endDate: z.string(),
 }).refine((data) => data.endDate > data.startDate, {
   message: 'End date must be after start date',
   path: ['endDate'],
@@ -400,8 +400,8 @@ export type CreateSeason = z.infer<typeof CreateSeasonSchema>;
 export const UpdateSeasonSchema = z.object({
   organizationId: z.string().uuid().optional(),
   name: z.string().min(1).max(100).optional(),
-  startDate: z.date().optional(),
-  endDate: z.date().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
 }).refine(
   (data) => {
     if (data.startDate && data.endDate) return data.endDate > data.startDate;
@@ -432,8 +432,8 @@ export const CompetitionRulesSchema = z.object({
 export type CompetitionRules = z.infer<typeof CompetitionRulesSchema>;
 
 export const RegistrationWindowSchema = z.object({
-  opensAt: z.date(),
-  closesAt: z.date(),
+  opensAt: z.string(),
+  closesAt: z.string(),
 }).refine((data) => data.closesAt > data.opensAt, {
   message: 'Registration must close after it opens',
   path: ['closesAt'],
@@ -451,8 +451,8 @@ export const CompetitionSchema = z.object({
   registrationWindow: RegistrationWindowSchema,
   enableGroups: z.boolean().default(false),
   enableKnockouts: z.boolean().default(false),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Competition = z.infer<typeof CompetitionSchema>;
 
@@ -479,8 +479,8 @@ export const GroupSchema = z.object({
   id: z.string().uuid(),
   competitionId: z.string().uuid(),
   name: z.string().min(1).max(50),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Group = z.infer<typeof GroupSchema>;
 
@@ -506,8 +506,8 @@ export const PitchSchema = z.object({
   capacity: z.number().int().min(0).optional(),
   surfaceType: z.string().max(50).optional(),
   isAvailable: z.boolean().default(true),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Pitch = z.infer<typeof PitchSchema>;
 
@@ -538,8 +538,8 @@ export const TeamSchema = z.object({
   registrationStatus: RegistrationStatusSchema,
   rosterApprovalStatus: RosterApprovalStatusSchema,
   coachId: z.string().uuid(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Team = z.infer<typeof TeamSchema>;
 
@@ -569,7 +569,7 @@ export const PlayerSchema = z.object({
   lastName: z.string().min(1).max(100),
   jerseyNumber: z.number().int().min(0).max(99),
   position: z.string().max(50).optional(),
-  dateOfBirth: z.date(),
+  dateOfBirth: z.string(),
   nationality: z.string().max(100).optional(),
   height: z.number().positive().max(300).optional(),
   weight: z.number().positive().max(300).optional(),
@@ -578,7 +578,7 @@ export const PlayerSchema = z.object({
   injuryDetails: z
     .object({
       description: z.string().min(1).max(500),
-      expectedReturnDate: z.date(),
+      expectedReturnDate: z.string(),
       medicalNotes: z.string().max(1000).optional(),
     })
     .optional(),
@@ -588,8 +588,8 @@ export const PlayerSchema = z.object({
       matchesRemaining: z.number().int().min(0),
     })
     .optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Player = z.infer<typeof PlayerSchema>;
 
@@ -599,7 +599,7 @@ export const CreatePlayerSchema = z.object({
   lastName: z.string().min(1).max(100),
   jerseyNumber: z.number().int().min(0).max(99),
   position: z.string().max(50).optional(),
-  dateOfBirth: z.date(),
+  dateOfBirth: z.string(),
   nationality: z.string().max(100).optional(),
   height: z.number().positive().max(300).optional(),
   weight: z.number().positive().max(300).optional(),
@@ -627,8 +627,8 @@ export const CoachSchema = z.object({
   lastName: z.string().min(1).max(100),
   email: z.string().email(),
   phone: z.string().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Coach = z.infer<typeof CoachSchema>;
 
@@ -650,8 +650,8 @@ export const OfficialSchema = z.object({
       holidays: z.boolean().default(false),
     })
     .optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Official = z.infer<typeof OfficialSchema>;
 
@@ -679,10 +679,10 @@ export const TeamRegistrationSchema = z.object({
   coachLastName: z.string().min(1).max(100),
   status: RegistrationStatusSchema,
   reviewedBy: z.string().uuid().optional(),
-  reviewedAt: z.date().optional(),
+  reviewedAt: z.string().optional(),
   rejectionReason: z.string().max(500).optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type TeamRegistration = z.infer<typeof TeamRegistrationSchema>;
 
@@ -720,10 +720,10 @@ export const RosterSubmissionSchema = z.object({
   status: RosterApprovalStatusSchema,
   submittedBy: z.string().uuid(),
   reviewedBy: z.string().uuid().optional(),
-  reviewedAt: z.date().optional(),
+  reviewedAt: z.string().optional(),
   rejectionReason: z.string().max(500).optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type RosterSubmission = z.infer<typeof RosterSubmissionSchema>;
 
@@ -760,10 +760,10 @@ export const TransferRequestSchema = z.object({
   status: TransferStatusSchema,
   requestedBy: z.string().uuid(),
   reviewedBy: z.string().uuid().optional(),
-  reviewedAt: z.date().optional(),
+  reviewedAt: z.string().optional(),
   rejectionReason: z.string().max(500).optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 }).refine((data) => data.fromTeamId !== data.toTeamId, {
   message: 'Cannot transfer to the same team',
   path: ['toTeamId'],
@@ -801,11 +801,17 @@ export const FixtureSchema = z.object({
   matchday: z.number().int().min(1),
   homeTeamId: z.string().uuid(),
   awayTeamId: z.string().uuid(),
-  scheduledAt: z.date(),
+  scheduledAt: z.string(),
   pitchId: z.string().uuid().optional(),
   status: MatchStatusSchema,
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  homeScore: z.number().int().min(0).optional(),
+  awayScore: z.number().int().min(0).optional(),
+  officialId: z.string().uuid().optional(),
+  postponedReason: z.string().optional(),
+  walkoverTeamId: z.string().uuid().optional(),
+  walkoverReason: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Fixture = z.infer<typeof FixtureSchema>;
 
@@ -814,7 +820,7 @@ export const CreateFixtureSchema = z.object({
   matchday: z.number().int().min(1),
   homeTeamId: z.string().uuid(),
   awayTeamId: z.string().uuid(),
-  scheduledAt: z.date(),
+  scheduledAt: z.string(),
   pitchId: z.string().uuid().optional(),
 }).refine((data) => data.homeTeamId !== data.awayTeamId, {
   message: 'Home and away teams must be different',
@@ -827,7 +833,7 @@ export const UpdateFixtureSchema = z.object({
   matchday: z.number().int().min(1).optional(),
   homeTeamId: z.string().uuid().optional(),
   awayTeamId: z.string().uuid().optional(),
-  scheduledAt: z.date().optional(),
+  scheduledAt: z.string().optional(),
   pitchId: z.string().uuid().optional(),
 }).refine(
   (data) => {
@@ -858,24 +864,24 @@ export const MatchSchema = z.object({
   awayScore: z.number().int().min(0).default(0),
   status: MatchStatusSchema,
   pitchId: z.string().uuid().optional(),
-  scheduledAt: z.date(),
-  startedAt: z.date().optional(),
-  halfTimeAt: z.date().optional(),
-  endedAt: z.date().optional(),
+  scheduledAt: z.string(),
+  startedAt: z.string().optional(),
+  halfTimeAt: z.string().optional(),
+  endedAt: z.string().optional(),
   extraTimeEnabled: z.boolean().default(false),
   penaltiesEnabled: z.boolean().default(false),
   homePenalties: z.number().int().min(0).optional(),
   awayPenalties: z.number().int().min(0).optional(),
   officialId: z.string().uuid().optional(),
-  reportSubmittedAt: z.date().optional(),
-  verifiedAt: z.date().optional(),
+  reportSubmittedAt: z.string().optional(),
+  verifiedAt: z.string().optional(),
   verifiedBy: z.string().uuid().optional(),
-  publishedAt: z.date().optional(),
+  publishedAt: z.string().optional(),
   walkoverTeamId: z.string().uuid().optional(),
   walkoverReason: z.string().max(500).optional(),
   postponedReason: z.string().max(500).optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 }).refine((data) => data.homeTeamId !== data.awayTeamId, {
   message: 'Home and away teams must be different',
   path: ['awayTeamId'],
@@ -887,7 +893,7 @@ export const CreateMatchSchema = z.object({
   competitionId: z.string().uuid(),
   homeTeamId: z.string().uuid(),
   awayTeamId: z.string().uuid(),
-  scheduledAt: z.date(),
+  scheduledAt: z.string(),
   pitchId: z.string().uuid().optional(),
   officialId: z.string().uuid().optional(),
 }).refine((data) => data.homeTeamId !== data.awayTeamId, {
@@ -909,7 +915,7 @@ export type RecordWalkover = z.infer<typeof RecordWalkoverSchema>;
 
 export const RecordPostponementSchema = z.object({
   postponedReason: z.string().min(1).max(500),
-  newScheduledAt: z.date().optional(),
+  newScheduledAt: z.string().optional(),
 });
 export type RecordPostponement = z.infer<typeof RecordPostponementSchema>;
 
@@ -942,7 +948,7 @@ export const MatchEventSchema = z.object({
   teamId: z.string().uuid().optional(),
   description: z.string().max(500).optional(),
   recordedBy: z.string().uuid(),
-  createdAt: z.date(),
+  createdAt: z.string(),
 });
 export type MatchEvent = z.infer<typeof MatchEventSchema>;
 
@@ -972,9 +978,9 @@ export const LineupSchema = z.object({
   isStarting: z.boolean().default(true),
   isLocked: z.boolean().default(false),
   submittedBy: z.string().uuid(),
-  submittedAt: z.date(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  submittedAt: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Lineup = z.infer<typeof LineupSchema>;
 
@@ -1003,7 +1009,7 @@ export const CardSchema = z.object({
   minute: z.number().int().min(0).max(120),
   reason: z.string().max(500).optional(),
   competitionId: z.string().uuid(),
-  createdAt: z.date(),
+  createdAt: z.string(),
 });
 export type Card = z.infer<typeof CardSchema>;
 
@@ -1030,11 +1036,11 @@ export const SuspensionSchema = z.object({
   matchesCount: z.number().int().min(1),
   matchesServed: z.number().int().min(0).default(0),
   cardId: z.string().uuid().optional(),
-  startDate: z.date(),
-  endDate: z.date().optional(),
+  startDate: z.string(),
+  endDate: z.string().optional(),
   isServed: z.boolean().default(false),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Suspension = z.infer<typeof SuspensionSchema>;
 
@@ -1050,8 +1056,8 @@ export const NotificationSchema = z.object({
   message: z.string().min(1).max(1000),
   data: z.record(z.unknown()).optional(),
   isRead: z.boolean().default(false),
-  readAt: z.date().optional(),
-  createdAt: z.date(),
+  readAt: z.string().optional(),
+  createdAt: z.string(),
 });
 export type Notification = z.infer<typeof NotificationSchema>;
 
@@ -1074,7 +1080,7 @@ export const AuditLogSchema = z.object({
   newValue: z.record(z.unknown()).optional(),
   ipAddress: z.string().ip().optional(),
   userAgent: z.string().max(500).optional(),
-  createdAt: z.date(),
+  createdAt: z.string(),
 });
 export type AuditLog = z.infer<typeof AuditLogSchema>;
 
@@ -1096,8 +1102,8 @@ export const MediaSchema = z.object({
   playerId: z.string().uuid().optional(),
   isApproved: z.boolean().default(false),
   approvedBy: z.string().uuid().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Media = z.infer<typeof MediaSchema>;
 
@@ -1127,11 +1133,11 @@ export const NewsArticleSchema = z.object({
   excerpt: z.string().max(500).optional(),
   authorId: z.string().uuid(),
   isPublished: z.boolean().default(false),
-  publishedAt: z.date().optional(),
+  publishedAt: z.string().optional(),
   competitionId: z.string().uuid().optional(),
   teamId: z.string().uuid().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type NewsArticle = z.infer<typeof NewsArticleSchema>;
 
@@ -1171,8 +1177,8 @@ export const StandingSchema = z.object({
   goalDifference: z.number().int().default(0),
   points: z.number().int().min(0).default(0),
   position: z.number().int().min(1).optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 export type Standing = z.infer<typeof StandingSchema>;
 
@@ -1262,7 +1268,7 @@ export const WsMatchStatusChangeSchema = z.object({
   type: z.literal('match_status_change'),
   matchId: z.string().uuid(),
   status: MatchStatusSchema,
-  timestamp: z.date(),
+  timestamp: z.string(),
 });
 export type WsMatchStatusChange = z.infer<typeof WsMatchStatusChangeSchema>;
 
