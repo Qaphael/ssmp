@@ -260,10 +260,8 @@ components:
           properties:
             opensAt:
               type: string
-              nullable: true
             closesAt:
               type: string
-              nullable: true
           required:
             - opensAt
             - closesAt
@@ -776,6 +774,22 @@ components:
             - cancelled
             - abandoned
             - walkover
+        homeScore:
+          type: integer
+          minimum: 0
+        awayScore:
+          type: integer
+          minimum: 0
+        officialId:
+          type: string
+          format: uuid
+        postponedReason:
+          type: string
+        walkoverTeamId:
+          type: string
+          format: uuid
+        walkoverReason:
+          type: string
         createdAt:
           type: string
         updatedAt:
@@ -1679,10 +1693,8 @@ paths:
                   maxLength: 100
                 startDate:
                   type: string
-                  nullable: true
                 endDate:
                   type: string
-                  nullable: true
               required:
                 - organizationId
                 - name
@@ -1736,10 +1748,8 @@ paths:
                   maxLength: 100
                 startDate:
                   type: string
-                  nullable: true
                 endDate:
                   type: string
-                  nullable: true
       responses:
         "200":
           description: Season updated
@@ -1900,10 +1910,8 @@ paths:
                   properties:
                     opensAt:
                       type: string
-                      nullable: true
                     closesAt:
                       type: string
-                      nullable: true
                   required:
                     - opensAt
                     - closesAt
@@ -2033,10 +2041,8 @@ paths:
                   properties:
                     opensAt:
                       type: string
-                      nullable: true
                     closesAt:
                       type: string
-                      nullable: true
                   required:
                     - opensAt
                     - closesAt
@@ -2329,7 +2335,6 @@ paths:
                   maxLength: 50
                 dateOfBirth:
                   type: string
-                  nullable: true
                 nationality:
                   type: string
                   maxLength: 100
@@ -2411,7 +2416,6 @@ paths:
                   maxLength: 50
                 dateOfBirth:
                   type: string
-                  nullable: true
                 nationality:
                   type: string
                   maxLength: 100
