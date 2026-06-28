@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd apps/public && pnpm run build",
+  "devCommand": "cd apps/public && pnpm run dev",
+  "outputDirectory": "apps/public/.next"
+}
