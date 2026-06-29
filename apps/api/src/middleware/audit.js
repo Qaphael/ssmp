@@ -1,4 +1,5 @@
 const { pool } = require('../config/db');
+const { env } = require('../config/env');
 
 async function createAuditLog({ userId, action, entityType, entityId, oldValue, newValue, ipAddress, userAgent }) {
   try {
@@ -17,7 +18,10 @@ async function createAuditLog({ userId, action, entityType, entityId, oldValue, 
       ]
     );
   } catch (err) {
-    console.error('[AUDIT] Failed to write audit log:', err.message);
+    console.error(`[AUDIT] FAILED: ${action} on ${entityType}:${entityId} by user ${userId} — ${err.message}`);
+    if (env.nodeEnv !== 'production') {
+      throw err;
+    }
   }
 }
 
