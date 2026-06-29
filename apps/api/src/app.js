@@ -17,6 +17,7 @@ const transferRoutes = require('./modules/transfers/transfer.routes');
 const auditRoutes = require('./modules/audit/audit.routes');
 const notificationRoutes = require('./modules/notifications/notification.routes');
 const mediaRoutes = require('./modules/media/media.routes');
+const authRoutes = require('./modules/auth/auth.routes');
 
 const app = express();
 
@@ -36,6 +37,8 @@ if (env.nodeEnv === 'development') {
     res.json({ token, userId: id, role });
   });
 }
+
+app.use('/api/auth', authRoutes);
 
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/seasons', seasonRoutes);

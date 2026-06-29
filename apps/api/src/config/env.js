@@ -27,4 +27,8 @@ const env = {
   fcmClientEmail: process.env.FCM_CLIENT_EMAIL || '',
 };
 
+if (env.nodeEnv === 'production' && (!process.env.JWT_SECRET || env.jwtSecret === 'dev-secret-change-in-production')) {
+  throw new Error('JWT_SECRET must be set in production');
+}
+
 module.exports = { env };

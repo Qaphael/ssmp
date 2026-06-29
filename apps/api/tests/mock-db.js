@@ -23,6 +23,7 @@ class MockDB {
       push_subscriptions: new Map(),
       device_tokens: new Map(),
       media: new Map(),
+      users: new Map(),
     };
     this.autoId = 1;
   }
@@ -939,6 +940,34 @@ const mockPool = {
     if (lowerSql.includes('delete from media')) {
       db.delete('media', params[0]);
       return { rows: [{ id: params[0] }] };
+    }
+
+    // Users (auth)
+    if (lowerSql.includes('insert into users')) {
+      const row = db.insert('users', {
+        email: params[0],
+        password_hash: params[1],
+        first_name: params[2],
+        last_name: params[3],
+        role: params[4],
+        is_active: true,
+      });
+      return { rows: [{ id: row.id, email: row.email, first_name: row.first_name, last_name: row.last_name, role: row.role }] };
+    }
+
+    if (lowerSql.includes('select id from users where email')) {
+      const row = db.findAll('users').find((r) => r.email === params[0]);
+      return { rows: row ? [{ id: row.id }] : [] };
+    }
+
+    if (lowerSql.includes('select id, email, password_hash, role, is_active from users where email')) {
+      const row = db.findAll('users').find((r) => r.email === params[0]);
+      return { rows: row ? [{ id: row.id, email: row.email, password_hash: row.password_hash, role: row.role, is_active: row.is_active }] : [] };
+    }
+
+    if (lowerSql.includes('update users set last_login_at')) {
+      const row = db.update('users', params[0], { last_login_at: new Date().toISOString() });
+      return { rows: row ? [row] : [] };
     }
 
     // Default
