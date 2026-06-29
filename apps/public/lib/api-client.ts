@@ -138,4 +138,21 @@ export const apiClient = {
     const data = await res.json()
     return data.data || []
   },
+
+  async getStandings(competitionId: string): Promise<Array<{
+    team: Team
+    played: number
+    won: number
+    drawn: number
+    lost: number
+    goalsFor: number
+    goalsAgainst: number
+    points: number
+  }>> {
+    const res = await fetch(`${API_URL}/api/public/standings/${competitionId}`, {
+      next: { revalidate: 60 },
+    })
+    if (!res.ok) throw new Error("Failed to fetch standings")
+    return res.json()
+  },
 }

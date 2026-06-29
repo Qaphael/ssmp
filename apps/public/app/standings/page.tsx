@@ -13,9 +13,20 @@ import {
 } from "@/components/ui/select"
 import type { Competition, Team } from "@ssmp/shared-types"
 
+type StandingsEntry = {
+  team: Team
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goalsFor: number
+  goalsAgainst: number
+  points: number
+}
+
 export default function StandingsPage() {
   const [competitions, setCompetitions] = useState<Competition[]>([])
-  const [teams, setTeams] = useState<Team[]>([])
+  const [standings, setStandings] = useState<StandingsEntry[]>([])
   const [selectedCompId, setSelectedCompId] = useState<string>("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,31 +51,20 @@ export default function StandingsPage() {
   }, [])
 
   useEffect(() => {
-    const loadTeams = async () => {
+    const loadStandings = async () => {
       if (!selectedCompId) return
 
       try {
-        const teamsList = await apiClient.getTeams(selectedCompId)
-        setTeams(teamsList)
+        const data = await apiClient.getStandings(selectedCompId)
+        setStandings(data)
       } catch (err) {
-        setError("Failed to load teams")
-        setTeams([])
+        setError("Failed to load standings")
+        setStandings([])
       }
     }
 
-    loadTeams()
+    loadStandings()
   }, [selectedCompId])
-
-  const standings = teams.map((team) => ({
-    team,
-    played: 0,
-    won: 0,
-    drawn: 0,
-    lost: 0,
-    goalsFor: 0,
-    goalsAgainst: 0,
-    points: 0,
-  }))
 
   return (
     <main className="container max-w-screen-2xl py-8 md:py-12">

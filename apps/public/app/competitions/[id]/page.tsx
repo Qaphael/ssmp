@@ -33,14 +33,14 @@ export default async function CompetitionDetailPage({
 }: CompetitionDetailPageProps) {
   let competition: any = null
   let matches: any[] = []
-  let teams: any[] = []
+  let standings: any[] = []
   let media: any[] = []
   let error: string | null = null
 
   try {
     competition = await apiClient.getCompetition(params.id)
-    teams = await apiClient.getTeams(params.id)
     matches = await apiClient.getMatches({ competitionId: params.id })
+    standings = await apiClient.getStandings(params.id)
     media = await apiClient.getMedia({ competitionId: params.id })
   } catch (err) {
     error = "Failed to load competition details"
@@ -55,18 +55,6 @@ export default async function CompetitionDetailPage({
       </main>
     )
   }
-
-  // Build standings from teams
-  const standings = teams.map((team) => ({
-    team,
-    played: 0,
-    won: 0,
-    drawn: 0,
-    lost: 0,
-    goalsFor: 0,
-    goalsAgainst: 0,
-    points: 0,
-  }))
 
   return (
     <main className="container max-w-screen-2xl py-8 md:py-12">

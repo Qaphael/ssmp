@@ -481,6 +481,23 @@ const mockPool = {
       return { rows: [row] };
     }
 
+    if (lowerSql.includes('from standings s') && lowerSql.includes('join teams t')) {
+      const rows = db.findAll('standings').filter((r) => r.competition_id === params[0]);
+      const result = rows.map((row) => {
+        const team = db.findById('teams', row.team_id) || {};
+        return {
+          ...row,
+          team_name: team.name || '',
+          school_name: team.school_name || '',
+          logo_url: team.logo_url || null,
+          primary_color: team.primary_color || null,
+          secondary_color: team.secondary_color || null,
+        };
+      });
+      result.sort((a, b) => (b.points - a.points) || (b.goal_difference - a.goal_difference) || (b.goals_for - a.goals_for));
+      return { rows: result };
+    }
+
     if (lowerSql.includes('select rules from competitions')) {
       const comp = db.findById('competitions', params[0]);
       return { rows: comp ? [{ rules: comp.rules || {} }] : [] };

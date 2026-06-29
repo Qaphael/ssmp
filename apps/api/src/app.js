@@ -18,6 +18,8 @@ const auditRoutes = require('./modules/audit/audit.routes');
 const notificationRoutes = require('./modules/notifications/notification.routes');
 const mediaRoutes = require('./modules/media/media.routes');
 const authRoutes = require('./modules/auth/auth.routes');
+const standingsRoutes = require('./modules/standings/standings.routes');
+const standingsPublicRoutes = require('./modules/standings/standings-public.routes');
 
 const app = express();
 
@@ -53,6 +55,9 @@ app.use('/api/transfers', transferRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api/standings', standingsRoutes);
+app.use('/api/public/standings', standingsPublicRoutes);
+app.use('/api/competitions/:competitionId/standings', standingsPublicRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
