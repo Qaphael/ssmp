@@ -78,6 +78,10 @@ export default function OfficialsMatchEvents({
   const [showWalkoverInput, setShowWalkoverInput] = useState(false);
   const [walkoverWinnerId, setWalkoverWinnerId] = useState('');
   const [walkoverReasonText, setWalkoverReasonText] = useState('');
+  const [showCancelInput, setShowCancelInput] = useState(false);
+  const [cancelReasonText, setCancelReasonText] = useState('');
+  const [showAbandonInput, setShowAbandonInput] = useState(false);
+  const [abandonReasonText, setAbandonReasonText] = useState('');
 
   // Current user (mock for dev)
   const currentUserId = currentRole === 'official' ? 'official-001' : 'admin-001';
@@ -340,6 +344,32 @@ export default function OfficialsMatchEvents({
       setShowWalkoverInput(false);
       setWalkoverWinnerId('');
       setWalkoverReasonText('');
+    } catch (err: any) {
+      setMatchError(err.message);
+    }
+  };
+
+  const handleCancelMatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMatch || !apiAvailable) return;
+    try {
+      const updated = await matchApi.updateMatchStatus(selectedMatch.id, 'cancelled');
+      setLiveMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      setShowCancelInput(false);
+      setCancelReasonText('');
+    } catch (err: any) {
+      setMatchError(err.message);
+    }
+  };
+
+  const handleAbandonMatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMatch || !apiAvailable) return;
+    try {
+      const updated = await matchApi.updateMatchStatus(selectedMatch.id, 'abandoned');
+      setLiveMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      setShowAbandonInput(false);
+      setAbandonReasonText('');
     } catch (err: any) {
       setMatchError(err.message);
     }
@@ -686,10 +716,28 @@ export default function OfficialsMatchEvents({
 
                     {canTransitionTo('walkover') && (
                       <button
-                        onClick={() => { setShowWalkoverInput(!showWalkoverInput); setShowPostponeInput(false); }}
+                        onClick={() => { setShowWalkoverInput(!showWalkoverInput); setShowPostponeInput(false); setShowCancelInput(false); setShowAbandonInput(false); }}
                         className="px-4 py-2 border border-[#E5E5E1] hover:border-red-400 hover:text-[#D43D2A] text-slate-500 text-[10px] uppercase tracking-wider font-bold transition cursor-pointer bg-white"
                       >
                         Declare Walkover
+                      </button>
+                    )}
+
+                    {canTransitionTo('cancelled') && (
+                      <button
+                        onClick={() => { setShowCancelInput(!showCancelInput); setShowPostponeInput(false); setShowWalkoverInput(false); setShowAbandonInput(false); }}
+                        className="px-4 py-2 border border-[#E5E5E1] hover:border-red-400 hover:text-[#D43D2A] text-slate-500 text-[10px] uppercase tracking-wider font-bold transition cursor-pointer bg-white"
+                      >
+                        Cancel Match
+                      </button>
+                    )}
+
+                    {canTransitionTo('abandoned') && (
+                      <button
+                        onClick={() => { setShowAbandonInput(!showAbandonInput); setShowPostponeInput(false); setShowWalkoverInput(false); setShowCancelInput(false); }}
+                        className="px-4 py-2 border border-[#E5E5E1] hover:border-orange-400 hover:text-orange-700 text-slate-500 text-[10px] uppercase tracking-wider font-bold transition cursor-pointer bg-white"
+                      >
+                        Abandon Match
                       </button>
                     )}
                   </div>
@@ -743,6 +791,48 @@ export default function OfficialsMatchEvents({
                       <button type="submit" className="px-3 py-1.5 bg-[#121212] text-white uppercase tracking-wider font-bold text-[10px] hover:bg-[#D43D2A]">
                         Confirm Walkover
                       </button>
+                    </form>
+                  )}
+
+                  {showCancelInput && (
+                    <form onSubmit={handleCancelMatch} className="mt-4 border border-red-200 bg-red-50 p-4 space-y-3">
+                      <p className="text-[10px] uppercase font-bold text-[#D43D2A]">Cancel Match</p>
+                      <input
+                        type="text"
+                        placeholder="e.g. Severe weather conditions made play unsafe..."
+                        value={cancelReasonText}
+                        onChange={(e) => setCancelReasonText(e.target.value)}
+                        className="w-full border border-red-200 bg-white px-3 py-1.5 text-xs focus:ring-0 focus:outline-none"
+                      />
+                      <div className="flex gap-2">
+                        <button type="submit" className="px-3 py-1.5 bg-[#D43D2A] text-white uppercase tracking-wider font-bold text-[10px] hover:bg-red-700">
+                          Confirm Cancellation
+                        </button>
+                        <button type="button" onClick={() => setShowCancelInput(false)} className="px-3 py-1.5 border border-red-200 text-[#D43D2A] uppercase tracking-wider font-bold text-[10px] hover:bg-red-100">
+                          Dismiss
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {showAbandonInput && (
+                    <form onSubmit={handleAbandonMatch} className="mt-4 border border-orange-200 bg-orange-50 p-4 space-y-3">
+                      <p className="text-[10px] uppercase font-bold text-orange-700">Abandon Match</p>
+                      <input
+                        type="text"
+                        placeholder="e.g. Pitch became unplayable due to waterlogging..."
+                        value={abandonReasonText}
+                        onChange={(e) => setAbandonReasonText(e.target.value)}
+                        className="w-full border border-orange-200 bg-white px-3 py-1.5 text-xs focus:ring-0 focus:outline-none"
+                      />
+                      <div className="flex gap-2">
+                        <button type="submit" className="px-3 py-1.5 bg-orange-600 text-white uppercase tracking-wider font-bold text-[10px] hover:bg-orange-700">
+                          Confirm Abandonment
+                        </button>
+                        <button type="button" onClick={() => setShowAbandonInput(false)} className="px-3 py-1.5 border border-orange-200 text-orange-700 uppercase tracking-wider font-bold text-[10px] hover:bg-orange-100">
+                          Dismiss
+                        </button>
+                      </div>
                     </form>
                   )}
                 </div>

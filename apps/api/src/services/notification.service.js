@@ -48,6 +48,74 @@ class NotificationService {
       ...payload,
     });
   }
+
+  matchPostponed(match, reason, newScheduledAt) {
+    const payload = { matchId: match.id, reason, newScheduledAt };
+    this.log('match_postponed', 'Match Postponed', `Match postponed: ${reason}`, payload);
+    socketService.broadcastToMatch(match.id, 'notification', {
+      type: 'match_postponed',
+      title: 'Match Postponed',
+      message: `Match has been postponed: ${reason}`,
+      ...payload,
+    });
+    socketService.broadcastToAll('notification', {
+      type: 'match_postponed',
+      title: 'Match Postponed',
+      message: `Match has been postponed: ${reason}`,
+      ...payload,
+    });
+  }
+
+  matchCancelled(match, reason) {
+    const payload = { matchId: match.id, reason };
+    this.log('match_cancelled', 'Match Cancelled', `Match cancelled: ${reason || 'No reason provided'}`, payload);
+    socketService.broadcastToMatch(match.id, 'notification', {
+      type: 'match_cancelled',
+      title: 'Match Cancelled',
+      message: `Match has been cancelled: ${reason || 'No reason provided'}`,
+      ...payload,
+    });
+    socketService.broadcastToAll('notification', {
+      type: 'match_cancelled',
+      title: 'Match Cancelled',
+      message: `Match has been cancelled: ${reason || 'No reason provided'}`,
+      ...payload,
+    });
+  }
+
+  matchWalkover(match, walkoverTeamId, reason) {
+    const payload = { matchId: match.id, walkoverTeamId, reason };
+    this.log('match_walkover', 'Walkover Declared', `Walkover: ${reason}`, payload);
+    socketService.broadcastToMatch(match.id, 'notification', {
+      type: 'match_walkover',
+      title: 'Walkover Declared',
+      message: `Walkover has been declared: ${reason}`,
+      ...payload,
+    });
+    socketService.broadcastToAll('notification', {
+      type: 'match_walkover',
+      title: 'Walkover Declared',
+      message: `Walkover has been declared: ${reason}`,
+      ...payload,
+    });
+  }
+
+  matchAbandoned(match, reason) {
+    const payload = { matchId: match.id, reason };
+    this.log('match_abandoned', 'Match Abandoned', `Match abandoned: ${reason || 'No reason provided'}`, payload);
+    socketService.broadcastToMatch(match.id, 'notification', {
+      type: 'match_abandoned',
+      title: 'Match Abandoned',
+      message: `Match has been abandoned: ${reason || 'No reason provided'}`,
+      ...payload,
+    });
+    socketService.broadcastToAll('notification', {
+      type: 'match_abandoned',
+      title: 'Match Abandoned',
+      message: `Match has been abandoned: ${reason || 'No reason provided'}`,
+      ...payload,
+    });
+  }
 }
 
 module.exports = new NotificationService();

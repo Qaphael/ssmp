@@ -131,6 +131,8 @@ export const NotificationTypeSchema = z.enum([
   'kickoff_reminder',
   'match_postponed',
   'match_cancelled',
+  'match_walkover',
+  'match_abandoned',
 ]);
 export type NotificationType = z.infer<typeof NotificationTypeSchema>;
 

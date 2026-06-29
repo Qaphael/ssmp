@@ -200,6 +200,13 @@ class MatchService {
       if (newStatus === 'full_time') {
         await disciplineService.autoServeSuspensionsAfterMatch(id);
       }
+
+      if (newStatus === 'cancelled') {
+        notificationService.matchCancelled(updated, null);
+      }
+      if (newStatus === 'abandoned') {
+        notificationService.matchAbandoned(updated, null);
+      }
       if (auditCtx) {
         await createAuditLog({ ...auditCtx, action: 'match:update-status', entityType: 'match', entityId: id, oldValue: match, newValue: updated });
       }
@@ -353,6 +360,9 @@ class MatchService {
     if (auditCtx && result.rows[0]) {
       await createAuditLog({ ...auditCtx, action: 'match:walkover', entityType: 'match', entityId: id, oldValue: old, newValue: result.rows[0] });
     }
+    if (result.rows[0]) {
+      notificationService.matchWalkover(result.rows[0], walkoverTeamId, walkoverReason);
+    }
     return result.rows[0] || null;
   }
 
@@ -378,6 +388,9 @@ class MatchService {
     );
     if (auditCtx && result.rows[0]) {
       await createAuditLog({ ...auditCtx, action: 'match:postpone', entityType: 'match', entityId: id, oldValue: old, newValue: result.rows[0] });
+    }
+    if (result.rows[0]) {
+      notificationService.matchPostponed(result.rows[0], postponedReason, newScheduledAt);
     }
     return result.rows[0] || null;
   }
