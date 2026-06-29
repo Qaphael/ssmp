@@ -11,6 +11,13 @@ class MockDB {
       competitions: new Map(),
       teams: new Map(),
       players: new Map(),
+      fixtures: new Map(),
+      matches: new Map(),
+      match_events: new Map(),
+      cards: new Map(),
+      suspensions: new Map(),
+      standings: new Map(),
+      notifications: new Map(),
     };
     this.autoId = 1;
   }
@@ -214,6 +221,14 @@ const mockPool = {
       return { rows: db.findAll('teams') };
     }
 
+    if (lowerSql.includes('select id from teams where competition_id')) {
+      let rows = db.findAll('teams').filter((r) => r.competition_id === params[0]);
+      if (lowerSql.includes('registration_status')) {
+        rows = rows.filter((r) => r.registration_status === 'approved');
+      }
+      return { rows: rows.map((r) => ({ id: r.id })) };
+    }
+
     if (lowerSql.includes('update teams set coach_id')) {
       const row = db.update('teams', params[1], { coach_id: params[0] });
       return { rows: row ? [row] : [] };
@@ -298,6 +313,322 @@ const mockPool = {
     if (lowerSql.includes('delete from players')) {
       db.delete('players', params[0]);
       return { rows: [{ id: params[0] }] };
+    }
+
+    // Fixtures
+    if (lowerSql.includes('insert into fixtures')) {
+      const row = db.insert('fixtures', {
+        competition_id: params[0],
+        matchday: params[1],
+        home_team_id: params[2],
+        away_team_id: params[3],
+        scheduled_at: params[4],
+        pitch_id: params[5] || null,
+        status: params[6] || 'scheduled',
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('select count(*) from fixtures')) {
+      const rows = db.findAll('fixtures');
+      return { rows: [{ count: rows.length }] };
+    }
+
+    if (lowerSql.includes('from fixtures f')) {
+      if (lowerSql.includes('where f.id =')) {
+        const row = db.findById('fixtures', params[0]);
+        return { rows: row ? [row] : [] };
+      }
+      let rows = db.findAll('fixtures');
+      if (lowerSql.includes('where f.competition_id')) {
+        rows = rows.filter((r) => r.competition_id === params[0]);
+      }
+      return { rows };
+    }
+
+    if (lowerSql.includes('delete from fixtures')) {
+      db.delete('fixtures', params[0]);
+      return { rows: [{ id: params[0] }] };
+    }
+
+    if (lowerSql.includes('update fixtures')) {
+      const id = params[params.length - 1];
+      const data = {};
+      if (lowerSql.includes('status = $1') || lowerSql.includes('status = $')) data.status = params[0];
+      if (lowerSql.includes('pitch_id =')) data.pitch_id = params[0];
+      if (lowerSql.includes('official_id =')) data.official_id = params[0];
+      if (lowerSql.includes('matchday =')) data.matchday = params[0];
+      if (lowerSql.includes('home_team_id =')) data.home_team_id = params[0];
+      if (lowerSql.includes('away_team_id =')) data.away_team_id = params[0];
+      if (lowerSql.includes('scheduled_at =')) data.scheduled_at = params[0];
+      const row = db.update('fixtures', id, data);
+      return { rows: row ? [row] : [] };
+    }
+
+    // Matches
+    if (lowerSql.includes('insert into matches')) {
+      const row = db.insert('matches', {
+        fixture_id: params[0],
+        competition_id: params[1],
+        home_team_id: params[2],
+        away_team_id: params[3],
+        scheduled_at: params[4],
+        pitch_id: params[5] || null,
+        official_id: params[6] || null,
+        status: params[7] || 'scheduled',
+        home_score: 0,
+        away_score: 0,
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('select count(*) from matches')) {
+      const rows = db.findAll('matches');
+      return { rows: [{ count: rows.length }] };
+    }
+
+    if (lowerSql.includes('from matches m')) {
+      if (lowerSql.includes('where m.id =')) {
+        const row = db.findById('matches', params[0]);
+        return { rows: row ? [row] : [] };
+      }
+      let rows = db.findAll('matches');
+      if (lowerSql.includes('where m.competition_id')) {
+        rows = rows.filter((r) => r.competition_id === params[0]);
+      }
+      return { rows };
+    }
+
+    if (lowerSql.includes('update matches')) {
+      const id = params[params.length - 1];
+      const data = {};
+      if (lowerSql.includes('status = $1')) {
+        data.status = params[0];
+      } else {
+        const statusMatch = lowerSql.match(/status\s*=\s*'([^']+)'/);
+        if (statusMatch) data.status = statusMatch[1];
+      }
+      if (lowerSql.includes('home_score =')) data.home_score = params[0];
+      if (lowerSql.includes('away_score =')) data.away_score = params[1];
+      if (lowerSql.includes('official_id =') && lowerSql.includes('status = $1')) data.official_id = params[1];
+      if (lowerSql.includes('official_id =') && !lowerSql.includes('status = $1')) data.official_id = params[0];
+      if (lowerSql.includes('walkover_team_id =')) data.walkover_team_id = params[0];
+      if (lowerSql.includes('walkover_reason =')) data.walkover_reason = params[1];
+      if (lowerSql.includes('postponed_reason =')) data.postponed_reason = params[0];
+      if (lowerSql.includes('started_at =')) data.started_at = new Date().toISOString();
+      if (lowerSql.includes('half_time_at =')) data.half_time_at = new Date().toISOString();
+      if (lowerSql.includes('ended_at =')) data.ended_at = new Date().toISOString();
+      if (lowerSql.includes('report_submitted_at =')) data.report_submitted_at = new Date().toISOString();
+      if (lowerSql.includes('verified_at =')) data.verified_at = new Date().toISOString();
+      if (lowerSql.includes('verified_by =')) data.verified_by = params[0];
+      if (lowerSql.includes('published_at =')) data.published_at = new Date().toISOString();
+      const row = db.update('matches', id, data);
+      return { rows: row ? [row] : [] };
+    }
+
+    // Standings
+    if (lowerSql.includes('insert into standings')) {
+      const compId = params[0];
+      const teamId = params[1];
+      const key = `${compId}:${teamId}`;
+      const existing = db.tables.standings.get(key);
+      if (existing) {
+        existing.played += params[2] || 0;
+        existing.won += params[3] || 0;
+        existing.drawn += params[4] || 0;
+        existing.lost += params[5] || 0;
+        existing.goals_for += params[6] || 0;
+        existing.goals_against += params[7] || 0;
+        existing.goal_difference = existing.goals_for - existing.goals_against;
+        existing.points += params[9] || 0;
+        db.tables.standings.set(key, existing);
+        return { rows: [existing] };
+      }
+      const row = db.insert('standings', {
+        competition_id: compId,
+        team_id: teamId,
+        played: params[2] || 0,
+        won: params[3] || 0,
+        drawn: params[4] || 0,
+        lost: params[5] || 0,
+        goals_for: params[6] || 0,
+        goals_against: params[7] || 0,
+        goal_difference: (params[6] || 0) - (params[7] || 0),
+        points: params[9] || 0,
+      });
+      db.tables.standings.set(key, row);
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('select rules from competitions')) {
+      const comp = db.findById('competitions', params[0]);
+      return { rows: comp ? [{ rules: comp.rules || {} }] : [] };
+    }
+
+    // Notifications
+    if (lowerSql.includes('insert into notifications')) {
+      const row = db.insert('notifications', {
+        user_id: params[0],
+        type: params[1],
+        title: params[2],
+        message: params[3],
+        data: params[4] ? JSON.parse(params[4]) : null,
+      });
+      return { rows: [row] };
+    }
+
+    // Match Events
+    if (lowerSql.includes('insert into match_events')) {
+      const row = db.insert('match_events', {
+        match_id: params[0],
+        type: params[1],
+        minute: params[2],
+        player_id: params[3] || null,
+        team_id: params[4] || null,
+        description: params[5] || null,
+        recorded_by: params[6],
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('from match_events me')) {
+      let rows = db.findAll('match_events');
+      if (lowerSql.includes('where me.match_id')) {
+        rows = rows.filter((r) => r.match_id === params[0]);
+      }
+      return { rows };
+    }
+
+    if (lowerSql.includes('select * from match_events where match_id')) {
+      const rows = db.findAll('match_events').filter((r) => r.match_id === params[0]);
+      return { rows };
+    }
+
+    // Cards
+    if (lowerSql.includes('insert into cards')) {
+      const row = db.insert('cards', {
+        match_id: params[0],
+        player_id: params[1],
+        team_id: params[2],
+        type: params[3],
+        minute: params[4],
+        competition_id: params[5],
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('select count(*) as yellow_count from cards')) {
+      const rows = db.findAll('cards').filter(
+        (r) => r.player_id === params[0] && r.competition_id === params[1] && r.type === 'yellow'
+      );
+      return { rows: [{ yellow_count: rows.length }] };
+    }
+
+    if (lowerSql.includes('select count(*) filter') && lowerSql.includes('from cards')) {
+      const rows = db.findAll('cards').filter(
+        (r) => r.player_id === params[0] && r.competition_id === params[1]
+      );
+      const yellow = rows.filter((r) => r.type === 'yellow').length;
+      const red = rows.filter((r) => r.type === 'red').length;
+      return { rows: [{ yellow_cards: yellow, red_cards: red }] };
+    }
+
+    if (lowerSql.includes('from cards c') && lowerSql.includes('group by')) {
+      const rows = db.findAll('cards').filter((r) => r.competition_id === params[0]);
+      const grouped = {};
+      for (const r of rows) {
+        if (!grouped[r.player_id]) {
+          grouped[r.player_id] = { player_id: r.player_id, yellow_cards: 0, red_cards: 0, total_cards: 0 };
+        }
+        grouped[r.player_id].total_cards++;
+        if (r.type === 'yellow') grouped[r.player_id].yellow_cards++;
+        if (r.type === 'red') grouped[r.player_id].red_cards++;
+      }
+      return { rows: Object.values(grouped).sort((a, b) => b.total_cards - a.total_cards) };
+    }
+
+    // Suspensions
+    if (lowerSql.includes('insert into suspensions')) {
+      const row = db.insert('suspensions', {
+        player_id: params[0],
+        competition_id: params[1],
+        reason: params[2],
+        matches_count: params[3],
+        card_id: params[4] || null,
+        matches_served: 0,
+        is_served: false,
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('select id from suspensions') && lowerSql.includes('is_served = false')) {
+      const rows = db.findAll('suspensions').filter(
+        (r) => r.player_id === params[0] && r.competition_id === params[1] && !r.is_served
+      );
+      return { rows };
+    }
+
+    if (lowerSql.includes('select id from suspensions') && lowerSql.includes('is_served')) {
+      const rows = db.findAll('suspensions').filter(
+        (r) => r.player_id === params[0] && r.competition_id === params[1] && !r.is_served
+      );
+      return { rows };
+    }
+
+    if (lowerSql.includes('from suspensions s') && lowerSql.includes('join players p')) {
+      const rows = db.findAll('suspensions').filter(
+        (r) => r.competition_id === params[0] && !r.is_served
+      );
+      return { rows };
+    }
+
+    if (lowerSql.includes('select * from suspensions') && lowerSql.includes('where player_id')) {
+      const rows = db.findAll('suspensions').filter(
+        (r) => r.player_id === params[0] && r.competition_id === params[1]
+      );
+      return { rows };
+    }
+
+    if (lowerSql.includes('select * from suspensions where id')) {
+      const row = db.findById('suspensions', params[0]);
+      return { rows: row ? [row] : [] };
+    }
+
+    if (lowerSql.includes('update suspensions set matches_served')) {
+      const id = params[params.length - 1];
+      const isServed = params[1] === true || params[1] === 'true';
+      const row = db.update('suspensions', id, { matches_served: params[0], is_served: isServed });
+      return { rows: row ? [row] : [] };
+    }
+
+    if (lowerSql.includes('update players set status') && lowerSql.includes('suspended')) {
+      const id = params[params.length - 1];
+      const row = db.update('players', id, { status: 'suspended', suspension_details: params[0] ? JSON.parse(params[0]) : null });
+      return { rows: row ? [row] : [] };
+    }
+
+    if (lowerSql.includes('update players set status') && lowerSql.includes('active') && lowerSql.includes('suspension_details')) {
+      const id = params[params.length - 1];
+      const row = db.update('players', id, { status: 'active', suspension_details: null });
+      return { rows: row ? [row] : [] };
+    }
+
+    if (lowerSql.includes('select distinct player_id from suspensions')) {
+      const rows = db.findAll('suspensions').filter(
+        (r) => r.competition_id === params[0] && !r.is_served && r.matches_served < r.matches_count
+      );
+      const playerIds = [...new Set(rows.map((r) => r.player_id))];
+      return { rows: playerIds.map((id) => ({ player_id: id })) };
+    }
+
+    if (lowerSql.includes('select competition_id from matches') && lowerSql.includes('where id')) {
+      const row = db.findById('matches', params[0]);
+      return { rows: row ? [{ competition_id: row.competition_id, home_team_id: row.home_team_id, away_team_id: row.away_team_id }] : [] };
+    }
+
+    if (lowerSql.includes('select id from players where team_id')) {
+      const rows = db.findAll('players').filter((r) => r.team_id === params[0]);
+      return { rows: rows.map((r) => ({ id: r.id })) };
     }
 
     // Default

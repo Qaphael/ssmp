@@ -167,6 +167,7 @@ export default function App() {
                     competitions={competitions}
                     matchEvents={matchEvents}
                     onActionCompleted={refreshAllData}
+                    currentRole={currentRole}
                   />
                 )}
 

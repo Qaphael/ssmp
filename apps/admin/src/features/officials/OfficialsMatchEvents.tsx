@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Users,
   Trophy,
@@ -18,9 +18,13 @@ import {
   FileCheck,
   Award,
   CheckCircle2,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
-import { Official, Fixture, Team, Player, MatchEvent, MatchEventType, Competition } from '@ssmp/shared-types';
+import { Official, Fixture, Team, Player, MatchEvent, MatchEventType, Competition, UserRole } from '@ssmp/shared-types';
 import { mockDb } from '../../shared/api/mockDb';
+import { connectSocket, disconnectSocket, isConnected, joinMatchRoom, leaveMatchRoom, onMatchEvent, onScoreUpdate, onStatusChange, onConnectionChange, fetchDevToken } from '../../shared/api/socket';
+import * as matchApi from '../../shared/api/matchApi';
 
 interface OfficialsMatchEventsProps {
   officials: Official[];
@@ -30,6 +34,7 @@ interface OfficialsMatchEventsProps {
   competitions: Competition[];
   matchEvents: MatchEvent[];
   onActionCompleted: () => void;
+  currentRole: UserRole;
 }
 
 export default function OfficialsMatchEvents({
@@ -40,8 +45,13 @@ export default function OfficialsMatchEvents({
   competitions,
   matchEvents,
   onActionCompleted,
+  currentRole,
 }: OfficialsMatchEventsProps) {
   const [activeSubTab, setActiveSubTab] = useState<'matchcenter' | 'officials'>('matchcenter');
+
+  // Socket.IO state
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [apiAvailable, setApiAvailable] = useState(false);
 
   // Officials creation state
   const [newOffName, setNewOffName] = useState('');
@@ -52,11 +62,15 @@ export default function OfficialsMatchEvents({
 
   // Live match center state
   const [selectedMatchId, setSelectedMatchId] = useState('');
+  const [liveMatches, setLiveMatches] = useState<matchApi.MatchData[]>([]);
+  const [liveMatchEvents, setLiveMatchEvents] = useState<matchApi.MatchEventData[]>([]);
   const [eventMinute, setEventMinute] = useState(1);
   const [eventType, setEventType] = useState<MatchEventType>('goal');
   const [eventPlayerId, setEventPlayerId] = useState('');
   const [eventTeamId, setEventTeamId] = useState('');
   const [eventDesc, setEventDesc] = useState('');
+  const [loadingMatches, setLoadingMatches] = useState(false);
+  const [matchError, setMatchError] = useState('');
 
   // Lock status and results states
   const [showPostponeInput, setShowPostponeInput] = useState(false);
@@ -64,6 +78,20 @@ export default function OfficialsMatchEvents({
   const [showWalkoverInput, setShowWalkoverInput] = useState(false);
   const [walkoverWinnerId, setWalkoverWinnerId] = useState('');
   const [walkoverReasonText, setWalkoverReasonText] = useState('');
+
+  // Current user (mock for dev)
+  const currentUserId = currentRole === 'official' ? 'official-001' : 'admin-001';
+
+  // Selected match data
+  const selectedMatch = liveMatches.find((m) => m.id === selectedMatchId);
+  const matchHomeTeam = selectedMatch ? teams.find((t) => t.id === selectedMatch.home_team_id) : null;
+  const matchAwayTeam = selectedMatch ? teams.find((t) => t.id === selectedMatch.away_team_id) : null;
+
+  const activeMatchPlayers = players.filter(
+    (p) =>
+      selectedMatch &&
+      (p.teamId === selectedMatch.home_team_id || p.teamId === selectedMatch.away_team_id)
+  );
 
   const getTeamName = (tid: string) => {
     const t = teams.find((tm) => tm.id === tid);
@@ -86,11 +114,132 @@ export default function OfficialsMatchEvents({
     return c ? c.name : 'Unknown Championship';
   };
 
-  // Handlers for Officials
+  // Check API availability and init Socket.IO
+  useEffect(() => {
+    const apiUrl = mockDb.getApiUrl();
+    if (!apiUrl) return;
+
+    setApiAvailable(true);
+    let cancelled = false;
+
+    fetchDevToken(apiUrl, currentRole).then((token) => {
+      if (cancelled || !token) return;
+      connectSocket(apiUrl, token);
+
+      const unsub = onConnectionChange(() => {
+        setSocketConnected(isConnected());
+      });
+
+      setSocketConnected(isConnected());
+
+      return () => {
+        unsub();
+      };
+    });
+
+    return () => {
+      cancelled = true;
+      disconnectSocket();
+    };
+  }, [currentRole]);
+
+  // Fetch matches from API when API is available
+  const fetchMatches = useCallback(async () => {
+    if (!apiAvailable) return;
+    setLoadingMatches(true);
+    setMatchError('');
+    try {
+      const filters: any = {};
+      if (currentRole === 'official') {
+        filters.officialId = currentUserId;
+      }
+      const matches = await matchApi.listMatches(filters);
+      setLiveMatches(matches);
+    } catch {
+      // API match list unavailable (no DB?) — fall back to mockDb fixtures, keep Socket.IO
+      const mockFixtures = fixtures.map((f) => ({
+        id: f.id,
+        fixture_id: f.id,
+        competition_id: f.competitionId,
+        home_team_id: f.homeTeamId,
+        away_team_id: f.awayTeamId,
+        home_score: f.homeScore ?? 0,
+        away_score: f.awayScore ?? 0,
+        status: f.status,
+        scheduled_at: f.scheduledAt,
+        official_id: f.officialId,
+        matchday: f.matchday,
+        home_team_name: getTeamName(f.homeTeamId),
+        away_team_name: getTeamName(f.awayTeamId),
+      }));
+      setLiveMatches(mockFixtures);
+    } finally {
+      setLoadingMatches(false);
+    }
+  }, [apiAvailable, currentRole, currentUserId]);
+
+  useEffect(() => {
+    fetchMatches();
+  }, [fetchMatches]);
+
+  // Socket.IO listeners for live updates
+  useEffect(() => {
+    if (!socketConnected || !selectedMatchId) return;
+
+    joinMatchRoom(selectedMatchId);
+
+    const unsubEvent = onMatchEvent((data: any) => {
+      if (data.matchId === selectedMatchId) {
+        setLiveMatchEvents((prev) => {
+          if (prev.some((e) => e.id === data.event.id)) return prev;
+          return [...prev, data.event];
+        });
+      }
+    });
+
+    const unsubScore = onScoreUpdate((data: any) => {
+      if (data.matchId === selectedMatchId) {
+        setLiveMatches((prev) =>
+          prev.map((m) =>
+            m.id === selectedMatchId
+              ? { ...m, home_score: data.homeScore, away_score: data.awayScore }
+              : m
+          )
+        );
+      }
+    });
+
+    const unsubStatus = onStatusChange((data: any) => {
+      if (data.matchId === selectedMatchId) {
+        setLiveMatches((prev) =>
+          prev.map((m) =>
+            m.id === selectedMatchId ? { ...m, status: data.status } : m
+          )
+        );
+      }
+    });
+
+    return () => {
+      leaveMatchRoom(selectedMatchId);
+      unsubEvent();
+      unsubScore();
+      unsubStatus();
+    };
+  }, [socketConnected, selectedMatchId]);
+
+  // Fetch match events when selecting a match
+  useEffect(() => {
+    if (!selectedMatchId || !apiAvailable) {
+      setLiveMatchEvents([]);
+      return;
+    }
+    matchApi.listMatchEvents(selectedMatchId).then(setLiveMatchEvents).catch(() => {});
+  }, [selectedMatchId, apiAvailable]);
+
+  // Handlers for Officials (still mockDb)
   const handleAddOfficial = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newOffName || !newOffEmail) return;
-
     mockDb.saveOfficial({
       userId: `user-off-${Math.random().toString(36).substring(7)}`,
       name: newOffName,
@@ -99,7 +248,6 @@ export default function OfficialsMatchEvents({
       certifications: newOffCert ? newOffCert.split(',').map((c) => c.trim()) : ['District Referee'],
       availability: { weekdayEvenings: true, weekends: true, holidays: true },
     });
-
     setNewOffName('');
     setNewOffEmail('');
     setNewOffPhone('');
@@ -113,144 +261,197 @@ export default function OfficialsMatchEvents({
     onActionCompleted();
   };
 
-  // Handlers for Live Match Center
-  const selectedFixture = fixtures.find((f) => f.id === selectedMatchId);
-  const matchHomeTeam = selectedFixture ? teams.find((t) => t.id === selectedFixture.homeTeamId) : null;
-  const matchAwayTeam = selectedFixture ? teams.find((t) => t.id === selectedFixture.awayTeamId) : null;
-
-  // Get matching players for dropdown
-  const activeMatchPlayers = players.filter(
-    (p) =>
-      selectedFixture &&
-      (p.teamId === selectedFixture.homeTeamId || p.teamId === selectedFixture.awayTeamId)
-  );
-
-  const handleAssignReferee = (refId: string) => {
-    if (!selectedFixture) return;
-    mockDb.saveFixture({
-      ...selectedFixture,
-      officialId: refId || undefined,
-    });
-    onActionCompleted();
-  };
-
-  const handleUpdateStatus = (status: Fixture['status']) => {
-    if (!selectedFixture) return;
-
-    // Reset scores if kickoff is initiated
-    const patch: Partial<Fixture> = { status };
-    if (status === 'kickoff') {
-      patch.homeScore = 0;
-      patch.awayScore = 0;
-      // Clear past match events
-      mockDb.clearEventsForMatch(selectedFixture.id);
+  // Handlers for Live Match Center (API-backed)
+  const handleAssignReferee = async (refId: string) => {
+    if (!selectedMatch || !apiAvailable) return;
+    try {
+      const updated = await matchApi.assignOfficial(selectedMatch.id, refId);
+      setLiveMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    } catch (err: any) {
+      setMatchError(err.message);
     }
-
-    mockDb.saveFixture({
-      ...selectedFixture,
-      ...patch,
-    });
-    onActionCompleted();
   };
 
-  const handleAddMatchEvent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFixture) return;
+  const handleUpdateStatus = async (status: Fixture['status']) => {
+    if (!selectedMatch || !apiAvailable) return;
+    try {
+      const updated = await matchApi.updateMatchStatus(selectedMatch.id, status as any);
+      setLiveMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      if (status === 'kickoff') {
+        setLiveMatchEvents([]);
+      }
+    } catch (err: any) {
+      setMatchError(err.message);
+    }
+  };
 
-    // Determine team from player if not set
+  const handleAddMatchEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMatch || !apiAvailable) return;
+
     let resolvedTeamId = eventTeamId;
     if (eventPlayerId && !resolvedTeamId) {
       const p = players.find((pl) => pl.id === eventPlayerId);
-      if (p) {
-        resolvedTeamId = p.teamId;
-      }
+      if (p) resolvedTeamId = p.teamId;
     }
 
-    // Save event
-    mockDb.addEvent({
-      matchId: selectedFixture.id,
-      type: eventType,
-      minute: Number(eventMinute),
-      playerId: eventPlayerId || undefined,
-      teamId: resolvedTeamId || undefined,
-      description: eventDesc || undefined,
-      recordedBy: 'system_admin',
-    });
+    try {
+      await matchApi.recordEvent(selectedMatch.id, {
+        matchId: selectedMatch.id,
+        type: eventType,
+        minute: Number(eventMinute),
+        playerId: eventPlayerId || undefined,
+        teamId: resolvedTeamId || undefined,
+        description: eventDesc || undefined,
+        recordedBy: currentUserId,
+      });
 
-    // Automatically update match scores
-    const updatedFixture = { ...selectedFixture };
-    const hScore = updatedFixture.homeScore ?? 0;
-    const aScore = updatedFixture.awayScore ?? 0;
-
-    if (eventType === 'goal' || eventType === 'penalty_scored') {
-      if (resolvedTeamId === selectedFixture.homeTeamId) {
-        updatedFixture.homeScore = hScore + 1;
-      } else if (resolvedTeamId === selectedFixture.awayTeamId) {
-        updatedFixture.awayScore = aScore + 1;
-      }
-    } else if (eventType === 'own_goal') {
-      // Own goal adds to opponent's score
-      if (resolvedTeamId === selectedFixture.homeTeamId) {
-        updatedFixture.awayScore = aScore + 1;
-      } else if (resolvedTeamId === selectedFixture.awayTeamId) {
-        updatedFixture.homeScore = hScore + 1;
-      }
+      setEventPlayerId('');
+      setEventDesc('');
+      setEventMinute(eventMinute < 90 ? eventMinute + 5 : 90);
+    } catch (err: any) {
+      setMatchError(err.message);
     }
-
-    mockDb.saveFixture(updatedFixture);
-
-    // Reset event inputs
-    setEventPlayerId('');
-    setEventDesc('');
-    setEventMinute(eventMinute < 90 ? eventMinute + 5 : 90);
-    onActionCompleted();
   };
 
-  const handlePostponeMatch = (e: React.FormEvent) => {
+  const handlePostponeMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFixture || !postponeReasonText) return;
-
-    mockDb.saveFixture({
-      ...selectedFixture,
-      status: 'postponed',
-      postponedReason: postponeReasonText,
-    });
-
-    setShowPostponeInput(false);
-    setPostponeReasonText('');
-    onActionCompleted();
+    if (!selectedMatch || !postponeReasonText || !apiAvailable) return;
+    try {
+      const updated = await matchApi.postponeMatch(selectedMatch.id, postponeReasonText);
+      setLiveMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      setShowPostponeInput(false);
+      setPostponeReasonText('');
+    } catch (err: any) {
+      setMatchError(err.message);
+    }
   };
 
-  const handleWalkoverMatch = (e: React.FormEvent) => {
+  const handleWalkoverMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFixture || !walkoverWinnerId) return;
-
-    mockDb.saveFixture({
-      ...selectedFixture,
-      status: 'walkover',
-      walkoverTeamId: walkoverWinnerId,
-      walkoverReason: walkoverReasonText || 'Opposing team failed to produce compliant minimum roster size.',
-    });
-
-    setShowWalkoverInput(false);
-    setWalkoverWinnerId('');
-    setWalkoverReasonText('');
-    onActionCompleted();
+    if (!selectedMatch || !walkoverWinnerId || !apiAvailable) return;
+    try {
+      const updated = await matchApi.recordWalkover(
+        selectedMatch.id,
+        walkoverWinnerId,
+        walkoverReasonText || 'Opposing team failed to produce compliant minimum roster size.'
+      );
+      setLiveMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      setShowWalkoverInput(false);
+      setWalkoverWinnerId('');
+      setWalkoverReasonText('');
+    } catch (err: any) {
+      setMatchError(err.message);
+    }
   };
 
-  const selectedMatchEvents = matchEvents.filter((e) => e.matchId === selectedMatchId);
+  const handleSubmitReport = async (homeScore: number, awayScore: number) => {
+    if (!selectedMatch || !apiAvailable) return;
+    try {
+      const updated = await matchApi.submitReport(selectedMatch.id, homeScore, awayScore);
+      setLiveMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    } catch (err: any) {
+      setMatchError(err.message);
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!selectedMatch || !apiAvailable) return;
+    try {
+      const updated = await matchApi.verifyMatch(selectedMatch.id);
+      setLiveMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    } catch (err: any) {
+      setMatchError(err.message);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!selectedMatch || !apiAvailable) return;
+    try {
+      const updated = await matchApi.publishMatch(selectedMatch.id);
+      setLiveMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    } catch (err: any) {
+      setMatchError(err.message);
+    }
+  };
+
+  // Get the fixture data (from mockDb for backwards compat or from live API)
+  const getSelectedFixture = (): Fixture | null => {
+    if (selectedMatch) {
+      return {
+        id: selectedMatch.id,
+        competitionId: selectedMatch.competition_id,
+        matchday: selectedMatch.matchday || 1,
+        homeTeamId: selectedMatch.home_team_id,
+        awayTeamId: selectedMatch.away_team_id,
+        scheduledAt: selectedMatch.scheduled_at,
+        status: selectedMatch.status as any,
+        homeScore: selectedMatch.home_score,
+        awayScore: selectedMatch.away_score,
+        officialId: selectedMatch.official_id,
+        createdAt: '',
+        updatedAt: '',
+      } as Fixture;
+    }
+    return null;
+  };
+
+  // Status transition helpers
+  const canTransitionTo = (target: string): boolean => {
+    if (!selectedMatch) return false;
+    const transitions: Record<string, string[]> = {
+      scheduled: ['officials_assigned', 'cancelled', 'postponed', 'walkover'],
+      officials_assigned: ['scheduled', 'lineups_submitted', 'cancelled', 'postponed', 'walkover'],
+      lineups_submitted: ['officials_assigned', 'lineups_locked', 'cancelled', 'postponed', 'walkover'],
+      lineups_locked: ['kickoff', 'cancelled', 'postponed', 'walkover'],
+      kickoff: ['half_time', 'cancelled', 'abandoned'],
+      half_time: ['second_half', 'cancelled', 'abandoned'],
+      second_half: ['extra_time', 'full_time', 'cancelled', 'abandoned'],
+      extra_time: ['penalties', 'full_time', 'cancelled', 'abandoned'],
+      penalties: ['full_time', 'cancelled', 'abandoned'],
+      full_time: ['report_submitted', 'walkover'],
+      report_submitted: ['verified'],
+      verified: ['published'],
+    };
+    return transitions[selectedMatch.status]?.includes(target) || false;
+  };
 
   return (
     <div className="space-y-6 font-sans text-xs">
       {/* Page Header */}
       <div className="border-b border-[#121212] pb-4">
-        <h1 className="text-3xl font-serif italic font-bold tracking-tight text-[#121212]">
-          Officials & <span className="text-[#D43D2A]">Match Center</span>
-        </h1>
-        <p className="mt-2 text-xs uppercase tracking-widest text-slate-500 font-bold leading-normal">
-          Registry of certified referees and real-time live scorekeeping portal.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-serif italic font-bold tracking-tight text-[#121212]">
+              Officials & <span className="text-[#D43D2A]">Match Center</span>
+            </h1>
+            <p className="mt-2 text-xs uppercase tracking-widest text-slate-500 font-bold leading-normal">
+              Registry of certified referees and real-time live scorekeeping portal.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {apiAvailable ? (
+              <span className={`flex items-center gap-1.5 text-[10px] font-mono font-bold ${socketConnected ? 'text-green-600' : 'text-amber-500'}`}>
+                {socketConnected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+                {socketConnected ? 'LIVE' : 'CONNECTING...'}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-400">
+                <AlertCircle className="h-3.5 w-3.5" /> OFFLINE (mock)
+              </span>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Error banner */}
+      {matchError && (
+        <div className="border border-red-200 bg-red-50 p-3 flex items-center gap-2 text-red-700 text-[11px]">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{matchError}</span>
+          <button onClick={() => setMatchError('')} className="ml-auto text-red-500 hover:text-red-700 font-bold">✕</button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-[#E5E5E1]">
@@ -289,35 +490,51 @@ export default function OfficialsMatchEvents({
           <div className="lg:col-span-2 space-y-6">
             <div className="border border-[#121212] bg-white p-6 rounded-none">
               <h2 className="text-xs uppercase tracking-wider text-[#121212] font-bold border-b border-[#121212] pb-3 mb-4">
-                Select Fixture to Administer
+                {currentRole === 'official' ? 'Your Assigned Matches' : 'Select Fixture to Administer'}
               </h2>
-              <select
-                value={selectedMatchId}
-                onChange={(e) => {
-                  setSelectedMatchId(e.target.value);
-                  setShowPostponeInput(false);
-                  setShowWalkoverInput(false);
-                }}
-                className="w-full border border-[#E5E5E1] bg-white px-4 py-2.5 text-xs focus:ring-0 focus:outline-none font-sans font-medium"
-              >
-                <option value="">-- Choose Scheduled Fixture --</option>
-                {fixtures.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    Matchday {f.matchday} • {getTeamName(f.homeTeamId)} vs {getTeamName(f.awayTeamId)} [
-                    {f.status.toUpperCase()}]
-                  </option>
-                ))}
-              </select>
+
+              {loadingMatches ? (
+                <div className="py-4 text-center text-slate-400 italic">Loading matches...</div>
+              ) : !apiAvailable ? (
+                <div className="py-4 text-center text-slate-400">
+                  <p className="font-serif italic mb-2">API not configured. Using offline mock data.</p>
+                  <p className="text-[10px]">Set the API URL in the header to connect to the live server.</p>
+                </div>
+              ) : (
+                <select
+                  value={selectedMatchId}
+                  onChange={(e) => {
+                    setSelectedMatchId(e.target.value);
+                    setShowPostponeInput(false);
+                    setShowWalkoverInput(false);
+                  }}
+                  className="w-full border border-[#E5E5E1] bg-white px-4 py-2.5 text-xs focus:ring-0 focus:outline-none font-sans font-medium"
+                >
+                  <option value="">-- Choose Scheduled Fixture --</option>
+                  {(apiAvailable ? liveMatches : fixtures).map((f: any) => {
+                    const homeName = apiAvailable ? (f.home_team_name || getTeamName(f.home_team_id)) : getTeamName(f.homeTeamId);
+                    const awayName = apiAvailable ? (f.away_team_name || getTeamName(f.away_team_id)) : getTeamName(f.awayTeamId);
+                    const status = f.status;
+                    const matchday = f.matchday;
+                    const id = f.id;
+                    return (
+                      <option key={id} value={id}>
+                        Matchday {matchday} • {homeName} vs {awayName} [{status.toUpperCase()}]
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
             </div>
 
-            {selectedFixture && matchHomeTeam && matchAwayTeam ? (
+            {selectedMatch && matchHomeTeam && matchAwayTeam ? (
               <div className="space-y-6">
                 {/* Scoreboard block */}
                 <div className="border border-[#121212] bg-white p-6 relative rounded-none shadow-sm text-center">
                   <div className="absolute top-0 left-0 h-1.5 w-full bg-[#121212]" />
 
                   <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">
-                    {getCompName(selectedFixture.competitionId)} • Matchday {selectedFixture.matchday}
+                    {getCompName(selectedMatch.competition_id)} • Matchday {selectedMatch.matchday}
                   </p>
 
                   <div className="my-6 grid grid-cols-3 items-center">
@@ -330,16 +547,16 @@ export default function OfficialsMatchEvents({
 
                     <div className="border-x border-[#E5E5E1] py-2 flex flex-col justify-center items-center">
                       <div className="text-3xl font-serif font-bold italic tracking-tight text-[#121212]">
-                        {selectedFixture.status === 'scheduled' || selectedFixture.status === 'postponed' ? (
+                        {selectedMatch.status === 'scheduled' || selectedMatch.status === 'postponed' ? (
                           <span className="text-sm font-sans uppercase font-bold tracking-widest text-slate-400">
                             VS
                           </span>
                         ) : (
-                          `${selectedFixture.homeScore ?? 0} - ${selectedFixture.awayScore ?? 0}`
+                          `${selectedMatch.home_score ?? 0} - ${selectedMatch.away_score ?? 0}`
                         )}
                       </div>
                       <span className="mt-2 text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 border bg-red-50 text-[#D43D2A] border-red-100 font-mono animate-pulse">
-                        {selectedFixture.status}
+                        {selectedMatch.status}
                       </span>
                     </div>
 
@@ -355,34 +572,47 @@ export default function OfficialsMatchEvents({
                     <div className="flex items-center gap-1.5">
                       <UserCheck className="h-4 w-4 text-[#D43D2A]" />
                       <span>Assigned Official: </span>
-                      <strong className="text-[#121212] font-mono">{getOfficialName(selectedFixture.officialId)}</strong>
+                      <strong className="text-[#121212] font-mono">
+                        {getOfficialName(selectedMatch.official_id)}
+                      </strong>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <label className="text-[10px] uppercase font-bold text-slate-400">Assign Referee:</label>
-                      <select
-                        value={selectedFixture.officialId || ''}
-                        onChange={(e) => handleAssignReferee(e.target.value)}
-                        className="border border-[#E5E5E1] bg-white px-2 py-1 text-[11px] focus:ring-0 focus:outline-none font-sans font-semibold"
-                      >
-                        <option value="">-- Select Official --</option>
-                        {officials.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    {currentRole !== 'official' && (
+                      <div className="flex items-center gap-2">
+                        <label className="text-[10px] uppercase font-bold text-slate-400">Assign Referee:</label>
+                        <select
+                          value={selectedMatch.official_id || ''}
+                          onChange={(e) => handleAssignReferee(e.target.value)}
+                          className="border border-[#E5E5E1] bg-white px-2 py-1 text-[11px] focus:ring-0 focus:outline-none font-sans font-semibold"
+                        >
+                          <option value="">-- Select Official --</option>
+                          {officials.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Match Status transitions */}
                 <div className="border border-[#E5E5E1] bg-[#FBFBF9] p-5 rounded-none space-y-4">
                   <h4 className="text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-[#E5E5E1] pb-2">
-                    Supervisor Match Status Transitions
+                    Match Status Transitions
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {selectedFixture.status === 'scheduled' && (
+                    {canTransitionTo('officials_assigned') && selectedMatch.status === 'scheduled' && currentRole !== 'official' && (
+                      <button
+                        onClick={() => handleUpdateStatus('officials_assigned')}
+                        className="px-4 py-2 bg-[#121212] hover:bg-[#D43D2A] text-white text-[10px] uppercase tracking-wider font-bold transition cursor-pointer"
+                      >
+                        Assign Officials
+                      </button>
+                    )}
+
+                    {canTransitionTo('kickoff') && (
                       <button
                         onClick={() => handleUpdateStatus('kickoff')}
                         className="px-4 py-2 bg-[#121212] hover:bg-[#D43D2A] text-white text-[10px] uppercase tracking-wider font-bold transition cursor-pointer"
@@ -391,7 +621,25 @@ export default function OfficialsMatchEvents({
                       </button>
                     )}
 
-                    {selectedFixture.status === 'kickoff' && (
+                    {canTransitionTo('half_time') && (
+                      <button
+                        onClick={() => handleUpdateStatus('half_time')}
+                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] uppercase tracking-wider font-bold transition cursor-pointer"
+                      >
+                        Half Time
+                      </button>
+                    )}
+
+                    {canTransitionTo('second_half') && (
+                      <button
+                        onClick={() => handleUpdateStatus('second_half')}
+                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] uppercase tracking-wider font-bold transition cursor-pointer"
+                      >
+                        Second Half
+                      </button>
+                    )}
+
+                    {canTransitionTo('full_time') && (
                       <button
                         onClick={() => handleUpdateStatus('full_time')}
                         className="px-4 py-2 bg-[#D43D2A] hover:bg-red-700 text-white text-[10px] uppercase tracking-wider font-bold transition cursor-pointer"
@@ -400,33 +648,45 @@ export default function OfficialsMatchEvents({
                       </button>
                     )}
 
-                    {(selectedFixture.status === 'full_time' || selectedFixture.status === 'walkover') && (
+                    {canTransitionTo('report_submitted') && (
                       <button
-                        onClick={() => handleUpdateStatus('scheduled')}
-                        className="px-4 py-2 border border-slate-300 hover:border-[#121212] text-slate-600 hover:text-black text-[10px] uppercase tracking-wider font-bold transition cursor-pointer"
+                        onClick={() => handleSubmitReport(selectedMatch.home_score, selectedMatch.away_score)}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] uppercase tracking-wider font-bold transition cursor-pointer"
                       >
-                        Reset to Scheduled
+                        Submit Report
                       </button>
                     )}
 
-                    {selectedFixture.status !== 'postponed' && selectedFixture.status !== 'full_time' && (
+                    {canTransitionTo('verified') && currentRole !== 'official' && (
                       <button
-                        onClick={() => {
-                          setShowPostponeInput(!showPostponeInput);
-                          setShowWalkoverInput(false);
-                        }}
+                        onClick={handleVerify}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-[10px] uppercase tracking-wider font-bold transition cursor-pointer"
+                      >
+                        Verify Report
+                      </button>
+                    )}
+
+                    {canTransitionTo('published') && currentRole !== 'official' && (
+                      <button
+                        onClick={handlePublish}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-[10px] uppercase tracking-wider font-bold transition cursor-pointer"
+                      >
+                        Publish Results
+                      </button>
+                    )}
+
+                    {canTransitionTo('postponed') && (
+                      <button
+                        onClick={() => { setShowPostponeInput(!showPostponeInput); setShowWalkoverInput(false); }}
                         className="px-4 py-2 border border-[#E5E5E1] hover:border-amber-400 hover:text-amber-700 text-slate-500 text-[10px] uppercase tracking-wider font-bold transition cursor-pointer bg-white"
                       >
                         Postpone Match
                       </button>
                     )}
 
-                    {selectedFixture.status !== 'full_time' && selectedFixture.status !== 'walkover' && (
+                    {canTransitionTo('walkover') && (
                       <button
-                        onClick={() => {
-                          setShowWalkoverInput(!showWalkoverInput);
-                          setShowPostponeInput(false);
-                        }}
+                        onClick={() => { setShowWalkoverInput(!showWalkoverInput); setShowPostponeInput(false); }}
                         className="px-4 py-2 border border-[#E5E5E1] hover:border-red-400 hover:text-[#D43D2A] text-slate-500 text-[10px] uppercase tracking-wider font-bold transition cursor-pointer bg-white"
                       >
                         Declare Walkover
@@ -434,7 +694,6 @@ export default function OfficialsMatchEvents({
                     )}
                   </div>
 
-                  {/* Postpone reason form */}
                   {showPostponeInput && (
                     <form onSubmit={handlePostponeMatch} className="mt-4 border border-[#E5E5E1] bg-white p-4 space-y-3">
                       <p className="text-[10px] uppercase font-bold text-slate-400">Postponement Details</p>
@@ -446,24 +705,18 @@ export default function OfficialsMatchEvents({
                         className="w-full border border-[#E5E5E1] px-3 py-1.5 focus:ring-0 focus:outline-none"
                         required
                       />
-                      <button
-                        type="submit"
-                        className="px-3 py-1.5 bg-[#121212] text-white uppercase tracking-wider font-bold text-[10px] hover:bg-[#D43D2A]"
-                      >
+                      <button type="submit" className="px-3 py-1.5 bg-[#121212] text-white uppercase tracking-wider font-bold text-[10px] hover:bg-[#D43D2A]">
                         Log Postponement
                       </button>
                     </form>
                   )}
 
-                  {/* Walkover awards form */}
                   {showWalkoverInput && (
                     <form onSubmit={handleWalkoverMatch} className="mt-4 border border-[#E5E5E1] bg-white p-4 space-y-3">
                       <p className="text-[10px] uppercase font-bold text-slate-400">Award Walkover Victory</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1">
-                            Award Winner
-                          </label>
+                          <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1">Award Winner</label>
                           <select
                             value={walkoverWinnerId}
                             onChange={(e) => setWalkoverWinnerId(e.target.value)}
@@ -471,14 +724,12 @@ export default function OfficialsMatchEvents({
                             required
                           >
                             <option value="">-- Select Award Winner --</option>
-                            <option value={selectedFixture.homeTeamId}>{matchHomeTeam.name}</option>
-                            <option value={selectedFixture.awayTeamId}>{matchAwayTeam.name}</option>
+                            <option value={selectedMatch.home_team_id}>{matchHomeTeam.name}</option>
+                            <option value={selectedMatch.away_team_id}>{matchAwayTeam.name}</option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1">
-                            Justification / Reason
-                          </label>
+                          <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1">Justification / Reason</label>
                           <input
                             type="text"
                             placeholder="e.g. Failure to field minimum 7 players"
@@ -489,10 +740,7 @@ export default function OfficialsMatchEvents({
                           />
                         </div>
                       </div>
-                      <button
-                        type="submit"
-                        className="px-3 py-1.5 bg-[#121212] text-white uppercase tracking-wider font-bold text-[10px] hover:bg-[#D43D2A]"
-                      >
+                      <button type="submit" className="px-3 py-1.5 bg-[#121212] text-white uppercase tracking-wider font-bold text-[10px] hover:bg-[#D43D2A]">
                         Confirm Walkover
                       </button>
                     </form>
@@ -500,9 +748,8 @@ export default function OfficialsMatchEvents({
                 </div>
 
                 {/* Event timeline logger */}
-                {selectedFixture.status === 'kickoff' && (
+                {(selectedMatch.status === 'kickoff' || selectedMatch.status === 'half_time' || selectedMatch.status === 'second_half') && (
                   <div className="border border-[#E5E5E1] bg-white p-6 rounded-none grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Add match event form */}
                     <div className="md:col-span-1 border-r border-[#E5E5E1] pr-6 space-y-4">
                       <h4 className="text-[10px] uppercase tracking-wider text-[#121212] font-bold border-b border-[#E5E5E1] pb-2 flex items-center gap-1.5">
                         <Activity className="h-4 w-4 text-[#D43D2A]" /> Log Live Event
@@ -587,19 +834,19 @@ export default function OfficialsMatchEvents({
                       </form>
                     </div>
 
-                    {/* Timeline representation */}
+                    {/* Timeline */}
                     <div className="md:col-span-2 space-y-4">
                       <h4 className="text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-[#E5E5E1] pb-2">
-                        Official Timeline
+                        Official Timeline {socketConnected && <span className="text-green-500">● LIVE</span>}
                       </h4>
 
-                      {selectedMatchEvents.length === 0 ? (
+                      {liveMatchEvents.length === 0 ? (
                         <div className="p-8 text-center text-slate-400 italic font-serif">
                           No live match events recorded yet. Match kickoff initiated.
                         </div>
                       ) : (
                         <div className="relative border-l border-[#E5E5E1] ml-2 pl-4 space-y-5">
-                          {selectedMatchEvents
+                          {[...liveMatchEvents]
                             .sort((a, b) => b.minute - a.minute)
                             .map((evt) => (
                               <div key={evt.id} className="relative group">
@@ -611,7 +858,7 @@ export default function OfficialsMatchEvents({
                                 </span>
                                 <p className="text-xs font-bold text-[#121212]">
                                   {evt.type.replace('_', ' ').toUpperCase()}
-                                  {evt.playerId && ` • ${getPlayerName(evt.playerId)}`}
+                                  {evt.player_id && ` • ${getPlayerName(evt.player_id)}`}
                                 </p>
                                 {evt.description && (
                                   <p className="text-[11px] text-slate-400 font-serif italic mt-0.5">
@@ -630,19 +877,20 @@ export default function OfficialsMatchEvents({
               <div className="border border-dashed border-[#E5E5E1] p-12 text-center bg-white">
                 <Calendar className="h-10 w-10 text-slate-300 mx-auto stroke-1" />
                 <p className="mt-4 text-sm font-serif italic text-slate-500">
-                  Select a fixture to initiate the Real-time Match Center controls.
+                  {currentRole === 'official'
+                    ? 'No matches assigned to you yet.'
+                    : 'Select a fixture to initiate the Real-time Match Center controls.'}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Quick Standings side-panel */}
+          {/* Right panel: standings */}
           <div className="space-y-6">
             <div className="border border-[#121212] bg-[#FBFBF9] p-6 rounded-none">
               <h3 className="text-xs uppercase tracking-wider text-[#121212] font-bold border-b border-[#121212] pb-3 flex items-center gap-2">
                 <Trophy className="h-4.5 w-4.5 text-[#D43D2A]" /> Live Standings Feed
               </h3>
-
               <div className="mt-4 space-y-4">
                 {competitions.map((comp) => {
                   const compStandings = mockDb.calculateStandings(comp.id);
@@ -651,7 +899,6 @@ export default function OfficialsMatchEvents({
                       <p className="text-[10px] uppercase font-bold text-slate-500 border-b border-slate-200 pb-1">
                         {comp.division || 'Division A'} • {comp.sport.toUpperCase()}
                       </p>
-
                       {compStandings.length === 0 ? (
                         <p className="text-[10px] text-slate-400 italic">No matches played yet.</p>
                       ) : (
@@ -680,7 +927,6 @@ export default function OfficialsMatchEvents({
 
       {activeSubTab === 'officials' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* List of active officials */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xs uppercase tracking-wider text-slate-500 font-bold">
@@ -701,69 +947,24 @@ export default function OfficialsMatchEvents({
                 </h4>
                 <form onSubmit={handleAddOfficial} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Mark Clattenburg"
-                      value={newOffName}
-                      onChange={(e) => setNewOffName(e.target.value)}
-                      className="w-full border border-[#E5E5E1] bg-white px-3 py-1.5 text-xs focus:ring-0 focus:outline-none"
-                      required
-                    />
+                    <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-mono">Full Name</label>
+                    <input type="text" placeholder="e.g. Mark Clattenburg" value={newOffName} onChange={(e) => setNewOffName(e.target.value)} className="w-full border border-[#E5E5E1] bg-white px-3 py-1.5 text-xs focus:ring-0 focus:outline-none" required />
                   </div>
                   <div>
-                    <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                      District Email
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="clattenburg@referee.district.org"
-                      value={newOffEmail}
-                      onChange={(e) => setNewOffEmail(e.target.value)}
-                      className="w-full border border-[#E5E5E1] bg-white px-3 py-1.5 text-xs focus:ring-0 focus:outline-none"
-                      required
-                    />
+                    <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-mono">District Email</label>
+                    <input type="email" placeholder="clattenburg@referee.district.org" value={newOffEmail} onChange={(e) => setNewOffEmail(e.target.value)} className="w-full border border-[#E5E5E1] bg-white px-3 py-1.5 text-xs focus:ring-0 focus:outline-none" required />
                   </div>
                   <div>
-                    <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                      Phone Number (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="+1 (555) 000-0000"
-                      value={newOffPhone}
-                      onChange={(e) => setNewOffPhone(e.target.value)}
-                      className="w-full border border-[#E5E5E1] bg-white px-3 py-1.5 text-xs focus:ring-0 focus:outline-none"
-                    />
+                    <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-mono">Phone Number (Optional)</label>
+                    <input type="text" placeholder="+1 (555) 000-0000" value={newOffPhone} onChange={(e) => setNewOffPhone(e.target.value)} className="w-full border border-[#E5E5E1] bg-white px-3 py-1.5 text-xs focus:ring-0 focus:outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                      Certifications (comma separated)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. FIFA Badge, Varsity Chief"
-                      value={newOffCert}
-                      onChange={(e) => setNewOffCert(e.target.value)}
-                      className="w-full border border-[#E5E5E1] bg-white px-3 py-1.5 text-xs focus:ring-0 focus:outline-none"
-                    />
+                    <label className="block text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-mono">Certifications (comma separated)</label>
+                    <input type="text" placeholder="e.g. FIFA Badge, Varsity Chief" value={newOffCert} onChange={(e) => setNewOffCert(e.target.value)} className="w-full border border-[#E5E5E1] bg-white px-3 py-1.5 text-xs focus:ring-0 focus:outline-none" />
                   </div>
                   <div className="sm:col-span-2 flex justify-end gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setNewOffShow(false)}
-                      className="px-3 py-1.5 text-slate-500 hover:text-black cursor-pointer font-bold uppercase text-[10px]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-1.5 bg-[#121212] hover:bg-[#D43D2A] text-white uppercase font-bold tracking-wider text-[10px]"
-                    >
-                      Save Official
-                    </button>
+                    <button type="button" onClick={() => setNewOffShow(false)} className="px-3 py-1.5 text-slate-500 hover:text-black cursor-pointer font-bold uppercase text-[10px]">Cancel</button>
+                    <button type="submit" className="px-4 py-1.5 bg-[#121212] hover:bg-[#D43D2A] text-white uppercase font-bold tracking-wider text-[10px]">Save Official</button>
                   </div>
                 </form>
               </div>
@@ -771,20 +972,12 @@ export default function OfficialsMatchEvents({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {officials.map((off) => (
-                <div
-                  key={off.id}
-                  className="border border-[#E5E5E1] bg-white p-5 rounded-none relative hover:border-[#121212] transition-all"
-                >
+                <div key={off.id} className="border border-[#E5E5E1] bg-white p-5 rounded-none relative hover:border-[#121212] transition-all">
                   <div className="absolute top-4 right-4 flex gap-2">
-                    <button
-                      onClick={() => handleDeleteOfficial(off.id)}
-                      className="text-slate-400 hover:text-[#D43D2A] transition"
-                      title="De-register Official"
-                    >
+                    <button onClick={() => handleDeleteOfficial(off.id)} className="text-slate-400 hover:text-[#D43D2A] transition" title="De-register Official">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
-
                   <div className="flex gap-3 items-start">
                     <div className="h-9 w-9 border border-[#121212] bg-[#F1F1ED] flex items-center justify-center shrink-0">
                       <Award className="h-5 w-5 text-[#D43D2A]" />
@@ -795,13 +988,9 @@ export default function OfficialsMatchEvents({
                       {off.phone && <p className="text-[10px] text-slate-400 font-mono mt-0.5">{off.phone}</p>}
                     </div>
                   </div>
-
                   <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-1">
                     {off.certifications?.map((c, i) => (
-                      <span
-                        key={i}
-                        className="inline-block bg-[#F1F1ED] text-[#121212] text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 border border-[#E5E5E1] rounded-none"
-                      >
+                      <span key={i} className="inline-block bg-[#F1F1ED] text-[#121212] text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 border border-[#E5E5E1] rounded-none">
                         {c}
                       </span>
                     ))}
@@ -811,7 +1000,6 @@ export default function OfficialsMatchEvents({
             </div>
           </div>
 
-          {/* Quick guide panel */}
           <div className="space-y-6">
             <div className="border border-[#121212] bg-[#FBFBF9] p-6 rounded-none">
               <h3 className="text-xs uppercase tracking-wider text-[#121212] font-bold border-b border-[#121212] pb-3 flex items-center gap-2">

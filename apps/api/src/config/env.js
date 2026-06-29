@@ -7,6 +7,7 @@ const env = {
   databaseUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/ssmp',
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
   nodeEnv: process.env.NODE_ENV || 'development',
+  socketCorsOrigin: process.env.SOCKET_CORS_ORIGIN || '*',
 };
 
 module.exports = { env };

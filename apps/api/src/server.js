@@ -1,7 +1,12 @@
+const http = require('http');
 const app = require('./app');
 const { env } = require('./config/env');
+const socketService = require('./services/socket.service');
 
-const server = app.listen(env.port, () => {
+const httpServer = http.createServer(app);
+socketService.init(httpServer);
+
+const server = httpServer.listen(env.port, () => {
   console.log(`SSMP API running on port ${env.port}`);
   console.log(`Environment: ${env.nodeEnv}`);
 });
