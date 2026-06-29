@@ -1,9 +1,10 @@
 const { pool } = require('../../config/db');
 const socketService = require('../../services/socket.service');
 const disciplineService = require('../../services/discipline.service');
+const { createAuditLog } = require('../../middleware/audit');
 
 class MatchEventService {
-  async create(matchId, data, recordedBy) {
+  async create(matchId, data, recordedBy, auditCtx) {
     const matchResult = await pool.query(
       `SELECT competition_id FROM matches WHERE id = $1`, [matchId]
     );
@@ -17,6 +18,10 @@ class MatchEventService {
     const event = result.rows[0];
 
     socketService.broadcastToMatch(matchId, 'match_event', { matchId, event });
+
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'match:record-event', entityType: 'match_event', entityId: event.id, newValue: event });
+    }
 
     if (data.type === 'goal' || data.type === 'own_goal' || data.type === 'penalty_scored') {
       const score = await this.recalculateScore(matchId);

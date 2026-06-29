@@ -1,4 +1,5 @@
 const { pool } = require('../../config/db');
+const { createAuditLog } = require('../../middleware/audit');
 
 class OrganizationService {
   async list(filters) {
@@ -43,16 +44,20 @@ class OrganizationService {
     return result.rows[0] || null;
   }
 
-  async create(data) {
+  async create(data, auditCtx) {
     const result = await pool.query(
       `INSERT INTO organizations (name, description, logo_url, contact_email, contact_phone, address)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [data.name, data.description || null, data.logoUrl || null, data.contactEmail || null, data.contactPhone || null, data.address || null]
     );
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'organization:create', entityType: 'organization', entityId: result.rows[0].id, newValue: result.rows[0] });
+    }
     return result.rows[0];
   }
 
-  async update(id, data) {
+  async update(id, data, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const fields = [];
     const values = [];
     let paramIndex = 1;
@@ -77,11 +82,18 @@ class OrganizationService {
     const result = await pool.query(
       `UPDATE organizations SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`, values
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'organization:update', entityType: 'organization', entityId: id, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async delete(id) {
+  async delete(id, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const result = await pool.query('DELETE FROM organizations WHERE id = $1 RETURNING id', [id]);
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'organization:delete', entityType: 'organization', entityId: id, oldValue: old });
+    }
     return result.rows[0] || null;
   }
 }

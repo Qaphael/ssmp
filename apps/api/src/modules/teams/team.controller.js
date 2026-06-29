@@ -24,7 +24,8 @@ class TeamController {
 
   async create(req, res, next) {
     try {
-      const team = await teamService.create(req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const team = await teamService.create(req.body, auditCtx);
       res.status(201).json({ success: true, data: team });
     } catch (err) {
       next(err);
@@ -33,7 +34,8 @@ class TeamController {
 
   async update(req, res, next) {
     try {
-      const team = await teamService.update(req.params.id, req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const team = await teamService.update(req.params.id, req.body, auditCtx);
       if (!team) {
         return res.status(404).json({ error: 'Team not found' });
       }
@@ -45,7 +47,8 @@ class TeamController {
 
   async assignCoach(req, res, next) {
     try {
-      const team = await teamService.assignCoach(req.params.id, req.body.coachId);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const team = await teamService.assignCoach(req.params.id, req.body.coachId, auditCtx);
       if (!team) {
         return res.status(404).json({ error: 'Team not found' });
       }
@@ -57,7 +60,8 @@ class TeamController {
 
   async approveRegistration(req, res, next) {
     try {
-      const team = await teamService.approveRegistration(req.params.id, req.body.status);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const team = await teamService.approveRegistration(req.params.id, req.body.status, auditCtx);
       if (!team) {
         return res.status(404).json({ error: 'Team not found' });
       }
@@ -69,7 +73,8 @@ class TeamController {
 
   async approveRoster(req, res, next) {
     try {
-      const team = await teamService.approveRoster(req.params.id, req.body.status);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const team = await teamService.approveRoster(req.params.id, req.body.status, auditCtx);
       if (!team) {
         return res.status(404).json({ error: 'Team not found' });
       }
@@ -81,7 +86,8 @@ class TeamController {
 
   async delete(req, res, next) {
     try {
-      const deleted = await teamService.delete(req.params.id);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const deleted = await teamService.delete(req.params.id, auditCtx);
       if (!deleted) {
         return res.status(404).json({ error: 'Team not found' });
       }

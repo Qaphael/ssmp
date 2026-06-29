@@ -3,7 +3,8 @@ const matchEventService = require('./match-event.service');
 class MatchEventController {
   async create(req, res, next) {
     try {
-      const event = await matchEventService.create(req.params.id, req.body, req.user.id);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const event = await matchEventService.create(req.params.id, req.body, req.user.id, auditCtx);
       res.status(201).json({ success: true, data: event });
     } catch (err) { next(err); }
   }

@@ -24,7 +24,8 @@ class PlayerController {
 
   async create(req, res, next) {
     try {
-      const player = await playerService.create(req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const player = await playerService.create(req.body, auditCtx);
       res.status(201).json({ success: true, data: player });
     } catch (err) {
       if (err.status) {
@@ -36,7 +37,8 @@ class PlayerController {
 
   async createBulk(req, res, next) {
     try {
-      const players = await playerService.createBulk(req.params.teamId, req.body.players);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const players = await playerService.createBulk(req.params.teamId, req.body.players, auditCtx);
       res.status(201).json({ success: true, data: players });
     } catch (err) {
       if (err.status) {
@@ -48,11 +50,13 @@ class PlayerController {
 
   async update(req, res, next) {
     try {
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
       const player = await playerService.update(
         req.params.id,
         req.body,
         req.user.id,
-        req.user.role
+        req.user.role,
+        auditCtx
       );
       if (!player) {
         return res.status(404).json({ error: 'Player not found' });
@@ -68,7 +72,8 @@ class PlayerController {
 
   async updateInjuryStatus(req, res, next) {
     try {
-      const player = await playerService.updateInjuryStatus(req.params.id, req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const player = await playerService.updateInjuryStatus(req.params.id, req.body, auditCtx);
       if (!player) {
         return res.status(404).json({ error: 'Player not found' });
       }
@@ -80,7 +85,8 @@ class PlayerController {
 
   async clearInjury(req, res, next) {
     try {
-      const player = await playerService.clearInjury(req.params.id);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const player = await playerService.clearInjury(req.params.id, auditCtx);
       if (!player) {
         return res.status(404).json({ error: 'Player not found' });
       }
@@ -92,7 +98,8 @@ class PlayerController {
 
   async delete(req, res, next) {
     try {
-      const deleted = await playerService.delete(req.params.id);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const deleted = await playerService.delete(req.params.id, auditCtx);
       if (!deleted) {
         return res.status(404).json({ error: 'Player not found' });
       }

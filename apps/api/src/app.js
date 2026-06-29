@@ -13,6 +13,7 @@ const fixtureRoutes = require('./modules/fixtures/fixture.routes');
 const matchRoutes = require('./modules/matches/match.routes');
 const disciplineRoutes = require('./modules/discipline/discipline.routes');
 const transferRoutes = require('./modules/transfers/transfer.routes');
+const auditRoutes = require('./modules/audit/audit.routes');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/fixtures', fixtureRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/discipline', disciplineRoutes);
 app.use('/api/transfers', transferRoutes);
+app.use('/api/audit-logs', auditRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });

@@ -15,6 +15,7 @@ import {
   ArrowRightLeft,
   Award,
   Megaphone,
+  FileText,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -89,6 +90,12 @@ export default function Sidebar({
       icon: Megaphone,
       badge: pendingMediaCount > 0 ? pendingMediaCount : null,
       badgeColor: 'bg-red-500 text-white animate-pulse',
+    },
+    {
+      id: 'audit',
+      label: 'Audit Log',
+      icon: FileText,
+      badge: null,
     },
   ];
 

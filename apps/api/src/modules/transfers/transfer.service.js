@@ -1,6 +1,7 @@
 const { pool } = require('../../config/db');
 const socketService = require('../../services/socket.service');
 const notificationService = require('../../services/notification.service');
+const { createAuditLog } = require('../../middleware/audit');
 
 class TransferService {
   async list(filters) {
@@ -80,16 +81,20 @@ class TransferService {
     return result.rows[0] || null;
   }
 
-  async create(data, requestedBy) {
+  async create(data, requestedBy, auditCtx) {
     const result = await pool.query(
       `INSERT INTO transfer_requests (player_id, from_team_id, to_team_id, competition_id, reason, requested_by, status)
        VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING *`,
       [data.playerId, data.fromTeamId, data.toTeamId, data.competitionId, data.reason, requestedBy]
     );
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'transfer:create', entityType: 'transfer_request', entityId: result.rows[0].id, newValue: result.rows[0] });
+    }
     return result.rows[0];
   }
 
-  async review(id, status, rejectionReason, reviewedBy) {
+  async review(id, status, rejectionReason, reviewedBy, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const transfer = await this.getById(id);
     if (!transfer) return null;
     if (transfer.status !== 'pending') {
@@ -137,6 +142,10 @@ class TransferService {
       `Player transfer request ${status}${rejectionReason ? ': ' + rejectionReason : ''}`,
       { transferId: id, playerId: transfer.player_id, status }
     );
+
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: `transfer:${status}`, entityType: 'transfer_request', entityId: id, oldValue: old, newValue: updated });
+    }
 
     return updated;
   }

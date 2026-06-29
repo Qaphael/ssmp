@@ -18,14 +18,16 @@ class CompetitionController {
 
   async create(req, res, next) {
     try {
-      const comp = await competitionService.create(req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const comp = await competitionService.create(req.body, auditCtx);
       res.status(201).json({ success: true, data: comp });
     } catch (err) { next(err); }
   }
 
   async update(req, res, next) {
     try {
-      const comp = await competitionService.update(req.params.id, req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const comp = await competitionService.update(req.params.id, req.body, auditCtx);
       if (!comp) return res.status(404).json({ error: 'Competition not found' });
       res.json({ success: true, data: comp });
     } catch (err) { next(err); }
@@ -33,7 +35,8 @@ class CompetitionController {
 
   async delete(req, res, next) {
     try {
-      const deleted = await competitionService.delete(req.params.id);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const deleted = await competitionService.delete(req.params.id, auditCtx);
       if (!deleted) return res.status(404).json({ error: 'Competition not found' });
       res.status(204).send();
     } catch (err) { next(err); }

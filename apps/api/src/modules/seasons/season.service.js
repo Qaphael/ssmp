@@ -1,4 +1,5 @@
 const { pool } = require('../../config/db');
+const { createAuditLog } = require('../../middleware/audit');
 
 class SeasonService {
   async list(filters) {
@@ -60,16 +61,20 @@ class SeasonService {
     return result.rows[0] || null;
   }
 
-  async create(data) {
+  async create(data, auditCtx) {
     const result = await pool.query(
       `INSERT INTO seasons (organization_id, name, start_date, end_date)
        VALUES ($1, $2, $3, $4) RETURNING *`,
       [data.organizationId, data.name, data.startDate, data.endDate]
     );
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'season:create', entityType: 'season', entityId: result.rows[0].id, newValue: result.rows[0] });
+    }
     return result.rows[0];
   }
 
-  async update(id, data) {
+  async update(id, data, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const fields = [];
     const values = [];
     let paramIndex = 1;
@@ -93,18 +98,29 @@ class SeasonService {
     const result = await pool.query(
       `UPDATE seasons SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`, values
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'season:update', entityType: 'season', entityId: id, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async archive(id) {
+  async archive(id, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const result = await pool.query(
       `UPDATE seasons SET is_archived = TRUE, updated_at = NOW() WHERE id = $1 RETURNING *`, [id]
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'season:archive', entityType: 'season', entityId: id, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async delete(id) {
+  async delete(id, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const result = await pool.query('DELETE FROM seasons WHERE id = $1 RETURNING id', [id]);
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'season:delete', entityType: 'season', entityId: id, oldValue: old });
+    }
     return result.rows[0] || null;
   }
 }

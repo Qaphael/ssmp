@@ -1,4 +1,5 @@
 const { pool } = require('../../config/db');
+const { createAuditLog } = require('../../middleware/audit');
 
 class TeamService {
   async list(filters, userId, userRole) {
@@ -78,7 +79,7 @@ class TeamService {
     return result.rows[0] || null;
   }
 
-  async create(data) {
+  async create(data, auditCtx) {
     const result = await pool.query(
       `INSERT INTO teams (competition_id, group_id, name, school_name, description, logo_url, primary_color, secondary_color)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -94,10 +95,14 @@ class TeamService {
         data.secondaryColor || null,
       ]
     );
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'team:create', entityType: 'team', entityId: result.rows[0].id, newValue: result.rows[0] });
+    }
     return result.rows[0];
   }
 
-  async update(id, data) {
+  async update(id, data, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const fields = [];
     const values = [];
     let paramIndex = 1;
@@ -130,38 +135,57 @@ class TeamService {
       `UPDATE teams SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
       values
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'team:update', entityType: 'team', entityId: id, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async assignCoach(teamId, coachId) {
+  async assignCoach(teamId, coachId, auditCtx) {
+    const old = auditCtx ? await this.getById(teamId) : null;
     const result = await pool.query(
       `UPDATE teams SET coach_id = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
       [coachId, teamId]
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'team:assign-coach', entityType: 'team', entityId: teamId, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async approveRegistration(teamId, status) {
+  async approveRegistration(teamId, status, auditCtx) {
+    const old = auditCtx ? await this.getById(teamId) : null;
     const result = await pool.query(
       `UPDATE teams SET registration_status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
       [status, teamId]
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'team:approve-registration', entityType: 'team', entityId: teamId, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async approveRoster(teamId, status) {
+  async approveRoster(teamId, status, auditCtx) {
+    const old = auditCtx ? await this.getById(teamId) : null;
     const result = await pool.query(
       `UPDATE teams SET roster_approval_status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
       [status, teamId]
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'team:approve-roster', entityType: 'team', entityId: teamId, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async delete(id) {
+  async delete(id, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const result = await pool.query(
       'DELETE FROM teams WHERE id = $1 RETURNING id',
       [id]
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'team:delete', entityType: 'team', entityId: id, oldValue: old });
+    }
     return result.rows[0] || null;
   }
 }

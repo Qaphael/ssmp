@@ -1,5 +1,6 @@
 const { pool } = require('../../config/db');
 const notificationService = require('../../services/notification.service');
+const { createAuditLog } = require('../../middleware/audit');
 
 const VALID_TRANSITIONS = {
   scheduled: ['officials_assigned', 'cancelled', 'postponed'],
@@ -89,16 +90,19 @@ class FixtureService {
     return result.rows[0] || null;
   }
 
-  async create(data) {
+  async create(data, auditCtx) {
     const result = await pool.query(
       `INSERT INTO fixtures (competition_id, matchday, home_team_id, away_team_id, scheduled_at, pitch_id, status)
        VALUES ($1, $2, $3, $4, $5, $6, 'scheduled') RETURNING *`,
       [data.competitionId, data.matchday, data.homeTeamId, data.awayTeamId, data.scheduledAt, data.pitchId || null]
     );
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'fixture:create', entityType: 'fixture', entityId: result.rows[0].id, newValue: result.rows[0] });
+    }
     return result.rows[0];
   }
 
-  async bulkCreate(data) {
+  async bulkCreate(data, auditCtx) {
     const created = [];
     for (const fixture of data.fixtures) {
       const result = await pool.query(
@@ -108,10 +112,14 @@ class FixtureService {
       );
       created.push(result.rows[0]);
     }
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'fixture:bulk-create', entityType: 'fixture', entityId: data.competitionId, newValue: { count: created.length } });
+    }
     return created;
   }
 
-  async update(id, data) {
+  async update(id, data, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const fields = [];
     const values = [];
     let paramIndex = 1;
@@ -152,16 +160,22 @@ class FixtureService {
     if (updated && (data.scheduledAt || data.pitchId || data.homeTeamId || data.awayTeamId)) {
       notificationService.fixtureChanged(updated, data);
     }
-
+    if (auditCtx && updated) {
+      await createAuditLog({ ...auditCtx, action: 'fixture:update', entityType: 'fixture', entityId: id, oldValue: old, newValue: updated });
+    }
     return updated || null;
   }
 
-  async delete(id) {
+  async delete(id, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const result = await pool.query('DELETE FROM fixtures WHERE id = $1 RETURNING id', [id]);
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'fixture:delete', entityType: 'fixture', entityId: id, oldValue: old });
+    }
     return result.rows[0] || null;
   }
 
-  async generateRoundRobin(competitionId, startDate) {
+  async generateRoundRobin(competitionId, startDate, auditCtx) {
     const teamsResult = await pool.query(
       `SELECT id FROM teams WHERE competition_id = $1 AND registration_status = 'approved'`,
       [competitionId]
@@ -197,6 +211,9 @@ class FixtureService {
       }
     }
 
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'fixture:generate-round-robin', entityType: 'fixture', entityId: competitionId, newValue: { count: created.length } });
+    }
     return created;
   }
 

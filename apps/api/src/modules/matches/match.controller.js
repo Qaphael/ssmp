@@ -18,14 +18,16 @@ class MatchController {
 
   async create(req, res, next) {
     try {
-      const match = await matchService.create(req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const match = await matchService.create(req.body, auditCtx);
       res.status(201).json({ success: true, data: match });
     } catch (err) { next(err); }
   }
 
   async updateStatus(req, res, next) {
     try {
-      const match = await matchService.updateStatus(req.params.id, req.body.status, req.user.id);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const match = await matchService.updateStatus(req.params.id, req.body.status, req.user.id, auditCtx);
       if (!match) return res.status(404).json({ error: 'Match not found' });
       res.json({ success: true, data: match });
     } catch (err) {
@@ -38,7 +40,8 @@ class MatchController {
 
   async assignOfficial(req, res, next) {
     try {
-      const match = await matchService.assignOfficial(req.params.id, req.body.officialId);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const match = await matchService.assignOfficial(req.params.id, req.body.officialId, auditCtx);
       if (!match) return res.status(404).json({ error: 'Match not found' });
       res.json({ success: true, data: match });
     } catch (err) { next(err); }
@@ -46,7 +49,8 @@ class MatchController {
 
   async submitReport(req, res, next) {
     try {
-      const match = await matchService.submitReport(req.params.id, req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const match = await matchService.submitReport(req.params.id, req.body, auditCtx);
       if (!match) return res.status(404).json({ error: 'Match not found' });
       res.json({ success: true, data: match });
     } catch (err) {
@@ -59,7 +63,8 @@ class MatchController {
 
   async verify(req, res, next) {
     try {
-      const match = await matchService.verify(req.params.id, req.user.id);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const match = await matchService.verify(req.params.id, req.user.id, auditCtx);
       if (!match) return res.status(404).json({ error: 'Match not found' });
       res.json({ success: true, data: match });
     } catch (err) {
@@ -72,7 +77,8 @@ class MatchController {
 
   async publish(req, res, next) {
     try {
-      const match = await matchService.publish(req.params.id);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const match = await matchService.publish(req.params.id, auditCtx);
       if (!match) return res.status(404).json({ error: 'Match not found' });
       res.json({ success: true, data: match });
     } catch (err) {
@@ -85,7 +91,8 @@ class MatchController {
 
   async recordWalkover(req, res, next) {
     try {
-      const match = await matchService.recordWalkover(req.params.id, req.body.walkoverTeamId, req.body.walkoverReason);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const match = await matchService.recordWalkover(req.params.id, req.body.walkoverTeamId, req.body.walkoverReason, auditCtx);
       if (!match) return res.status(404).json({ error: 'Match not found' });
       res.json({ success: true, data: match });
     } catch (err) { next(err); }
@@ -93,7 +100,8 @@ class MatchController {
 
   async postpone(req, res, next) {
     try {
-      const match = await matchService.postpone(req.params.id, req.body.postponedReason, req.body.newScheduledAt);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const match = await matchService.postpone(req.params.id, req.body.postponedReason, req.body.newScheduledAt, auditCtx);
       if (!match) return res.status(404).json({ error: 'Match not found' });
       res.json({ success: true, data: match });
     } catch (err) { next(err); }

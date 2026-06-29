@@ -2,6 +2,7 @@ const { pool } = require('../../config/db');
 const notificationService = require('../../services/notification.service');
 const socketService = require('../../services/socket.service');
 const disciplineService = require('../../services/discipline.service');
+const { createAuditLog } = require('../../middleware/audit');
 
 const VALID_TRANSITIONS = {
   scheduled: ['officials_assigned', 'cancelled', 'postponed', 'walkover'],
@@ -123,7 +124,7 @@ class MatchService {
     return result.rows[0] || null;
   }
 
-  async create(data) {
+  async create(data, auditCtx) {
     const result = await pool.query(
       `INSERT INTO matches (fixture_id, competition_id, home_team_id, away_team_id, scheduled_at, pitch_id, official_id, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled') RETURNING *`,
@@ -137,10 +138,13 @@ class MatchService {
         data.officialId || null,
       ]
     );
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'match:create', entityType: 'match', entityId: result.rows[0].id, newValue: result.rows[0] });
+    }
     return result.rows[0];
   }
 
-  async updateStatus(id, newStatus, userId) {
+  async updateStatus(id, newStatus, userId, auditCtx) {
     const match = await this.getById(id);
     if (!match) return null;
 
@@ -196,12 +200,16 @@ class MatchService {
       if (newStatus === 'full_time') {
         await disciplineService.autoServeSuspensionsAfterMatch(id);
       }
+      if (auditCtx) {
+        await createAuditLog({ ...auditCtx, action: 'match:update-status', entityType: 'match', entityId: id, oldValue: match, newValue: updated });
+      }
     }
 
     return updated || null;
   }
 
-  async assignOfficial(id, officialId) {
+  async assignOfficial(id, officialId, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const result = await pool.query(
       `UPDATE matches SET official_id = $1, status = 'officials_assigned', updated_at = NOW()
        WHERE id = $2 RETURNING *`,
@@ -215,12 +223,15 @@ class MatchService {
         status: 'officials_assigned',
         timestamp: new Date().toISOString(),
       });
+      if (auditCtx) {
+        await createAuditLog({ ...auditCtx, action: 'match:assign-official', entityType: 'match', entityId: id, oldValue: old, newValue: result.rows[0] });
+      }
     }
 
     return result.rows[0] || null;
   }
 
-  async submitReport(id, reportData) {
+  async submitReport(id, reportData, auditCtx) {
     const match = await this.getById(id);
     if (!match) return null;
 
@@ -251,12 +262,15 @@ class MatchService {
         homeScore: reportData.homeScore,
         awayScore: reportData.awayScore,
       });
+      if (auditCtx) {
+        await createAuditLog({ ...auditCtx, action: 'match:submit-report', entityType: 'match', entityId: id, oldValue: match, newValue: updated });
+      }
     }
 
     return updated || null;
   }
 
-  async verify(id, verifiedBy) {
+  async verify(id, verifiedBy, auditCtx) {
     const match = await this.getById(id);
     if (!match) return null;
 
@@ -281,12 +295,15 @@ class MatchService {
         status: 'verified',
         timestamp: new Date().toISOString(),
       });
+      if (auditCtx) {
+        await createAuditLog({ ...auditCtx, action: 'match:verify', entityType: 'match', entityId: id, oldValue: match, newValue: updated });
+      }
     }
 
     return updated || null;
   }
 
-  async publish(id) {
+  async publish(id, auditCtx) {
     const match = await this.getById(id);
     if (!match) return null;
 
@@ -311,12 +328,16 @@ class MatchService {
         status: 'published',
         timestamp: new Date().toISOString(),
       });
+      if (auditCtx) {
+        await createAuditLog({ ...auditCtx, action: 'match:publish', entityType: 'match', entityId: id, oldValue: match, newValue: published });
+      }
     }
 
     return published || null;
   }
 
-  async recordWalkover(id, walkoverTeamId, walkoverReason) {
+  async recordWalkover(id, walkoverTeamId, walkoverReason, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const match = await this.getById(id);
     if (!match) return null;
 
@@ -329,11 +350,14 @@ class MatchService {
        WHERE id = $3 RETURNING *`,
       [walkoverTeamId, walkoverReason, id]
     );
-
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'match:walkover', entityType: 'match', entityId: id, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async postpone(id, postponedReason, newScheduledAt) {
+  async postpone(id, postponedReason, newScheduledAt, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const match = await this.getById(id);
     if (!match) return null;
 
@@ -352,7 +376,9 @@ class MatchService {
     const result = await pool.query(
       `UPDATE matches SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`, values
     );
-
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'match:postpone', entityType: 'match', entityId: id, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 

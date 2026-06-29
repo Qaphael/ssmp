@@ -18,21 +18,24 @@ class FixtureController {
 
   async create(req, res, next) {
     try {
-      const fixture = await fixtureService.create(req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const fixture = await fixtureService.create(req.body, auditCtx);
       res.status(201).json({ success: true, data: fixture });
     } catch (err) { next(err); }
   }
 
   async bulkCreate(req, res, next) {
     try {
-      const fixtures = await fixtureService.bulkCreate(req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const fixtures = await fixtureService.bulkCreate(req.body, auditCtx);
       res.status(201).json({ success: true, data: fixtures, count: fixtures.length });
     } catch (err) { next(err); }
   }
 
   async update(req, res, next) {
     try {
-      const fixture = await fixtureService.update(req.params.id, req.body);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const fixture = await fixtureService.update(req.params.id, req.body, auditCtx);
       if (!fixture) return res.status(404).json({ error: 'Fixture not found' });
       res.json({ success: true, data: fixture });
     } catch (err) { next(err); }
@@ -40,7 +43,8 @@ class FixtureController {
 
   async delete(req, res, next) {
     try {
-      const deleted = await fixtureService.delete(req.params.id);
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const deleted = await fixtureService.delete(req.params.id, auditCtx);
       if (!deleted) return res.status(404).json({ error: 'Fixture not found' });
       res.status(204).send();
     } catch (err) { next(err); }
@@ -48,8 +52,9 @@ class FixtureController {
 
   async generateRoundRobin(req, res, next) {
     try {
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
       const { competitionId, startDate } = req.body;
-      const fixtures = await fixtureService.generateRoundRobin(competitionId, startDate);
+      const fixtures = await fixtureService.generateRoundRobin(competitionId, startDate, auditCtx);
       res.status(201).json({ success: true, data: fixtures, count: fixtures.length });
     } catch (err) { next(err); }
   }

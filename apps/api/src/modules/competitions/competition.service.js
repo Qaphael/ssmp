@@ -1,4 +1,5 @@
 const { pool } = require('../../config/db');
+const { createAuditLog } = require('../../middleware/audit');
 
 class CompetitionService {
   async list(filters) {
@@ -66,7 +67,7 @@ class CompetitionService {
     return result.rows[0] || null;
   }
 
-  async create(data) {
+  async create(data, auditCtx) {
     const rules = data.rules || {};
     const registrationWindow = data.registrationWindow;
 
@@ -84,10 +85,14 @@ class CompetitionService {
         data.enableKnockouts || false,
       ]
     );
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'competition:create', entityType: 'competition', entityId: result.rows[0].id, newValue: result.rows[0] });
+    }
     return result.rows[0];
   }
 
-  async update(id, data) {
+  async update(id, data, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const fields = [];
     const values = [];
     let paramIndex = 1;
@@ -121,11 +126,18 @@ class CompetitionService {
     const result = await pool.query(
       `UPDATE competitions SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`, values
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'competition:update', entityType: 'competition', entityId: id, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async delete(id) {
+  async delete(id, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const result = await pool.query('DELETE FROM competitions WHERE id = $1 RETURNING id', [id]);
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'competition:delete', entityType: 'competition', entityId: id, oldValue: old });
+    }
     return result.rows[0] || null;
   }
 }

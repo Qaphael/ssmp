@@ -152,8 +152,8 @@ const permissions = {
   'news:publish':        [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.MEDIA_OFFICER],
 
   // ─── Audit Logs ──────────────────────────────────────────────────
-  'audit:list':          [ROLES.SYSTEM_ADMIN],
-  'audit:read':          [ROLES.SYSTEM_ADMIN],
+  'audit:list':          [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN],
+  'audit:read':          [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN],
 
   // ─── Users ───────────────────────────────────────────────────────
   'user:list':           [ROLES.SYSTEM_ADMIN],

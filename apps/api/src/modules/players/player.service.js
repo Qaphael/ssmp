@@ -1,4 +1,5 @@
 const { pool } = require('../../config/db');
+const { createAuditLog } = require('../../middleware/audit');
 
 class PlayerService {
   async list(filters) {
@@ -67,7 +68,7 @@ class PlayerService {
     return result.rows[0] || null;
   }
 
-  async create(data) {
+  async create(data, auditCtx) {
     await this._checkRegistrationWindow(data.teamId);
 
     const result = await pool.query(
@@ -87,10 +88,13 @@ class PlayerService {
         data.photoUrl || null,
       ]
     );
+    if (auditCtx) {
+      await createAuditLog({ ...auditCtx, action: 'player:create', entityType: 'player', entityId: result.rows[0].id, newValue: result.rows[0] });
+    }
     return result.rows[0];
   }
 
-  async createBulk(teamId, players) {
+  async createBulk(teamId, players, auditCtx) {
     await this._checkRegistrationWindow(teamId);
 
     const client = await pool.connect();
@@ -119,6 +123,11 @@ class PlayerService {
       }
 
       await client.query('COMMIT');
+      if (auditCtx) {
+        for (const p of created) {
+          await createAuditLog({ ...auditCtx, action: 'player:create', entityType: 'player', entityId: p.id, newValue: p });
+        }
+      }
       return created;
     } catch (err) {
       await client.query('ROLLBACK');
@@ -128,7 +137,7 @@ class PlayerService {
     }
   }
 
-  async update(id, data, userId, userRole) {
+  async update(id, data, userId, userRole, auditCtx) {
     const existing = await this.getById(id);
     if (!existing) return null;
 
@@ -175,10 +184,14 @@ class PlayerService {
       `UPDATE players SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
       values
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'player:update', entityType: 'player', entityId: id, oldValue: existing, newValue: result.rows[0] });
+    }
     return result.rows[0];
   }
 
-  async updateInjuryStatus(id, data) {
+  async updateInjuryStatus(id, data, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const result = await pool.query(
       `UPDATE players
        SET status = 'injured',
@@ -192,10 +205,14 @@ class PlayerService {
        RETURNING *`,
       [data.description, data.expectedReturnDate, data.medicalNotes || null, id]
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'player:update-injury', entityType: 'player', entityId: id, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async clearInjury(id) {
+  async clearInjury(id, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const result = await pool.query(
       `UPDATE players
        SET status = 'active', injury_details = NULL, updated_at = NOW()
@@ -203,14 +220,21 @@ class PlayerService {
        RETURNING *`,
       [id]
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'player:clear-injury', entityType: 'player', entityId: id, oldValue: old, newValue: result.rows[0] });
+    }
     return result.rows[0] || null;
   }
 
-  async delete(id) {
+  async delete(id, auditCtx) {
+    const old = auditCtx ? await this.getById(id) : null;
     const result = await pool.query(
       'DELETE FROM players WHERE id = $1 RETURNING id',
       [id]
     );
+    if (auditCtx && result.rows[0]) {
+      await createAuditLog({ ...auditCtx, action: 'player:delete', entityType: 'player', entityId: id, oldValue: old });
+    }
     return result.rows[0] || null;
   }
 

@@ -19,6 +19,7 @@ class MockDB {
       transfer_requests: new Map(),
       standings: new Map(),
       notifications: new Map(),
+      audit_logs: new Map(),
     };
     this.autoId = 1;
   }
@@ -725,6 +726,34 @@ const mockPool = {
       if (lowerSql.includes('rejection_reason =')) data.rejection_reason = params[2];
       const row = db.update('transfer_requests', id, data);
       return { rows: row ? [row] : [] };
+    }
+
+    // Audit Logs
+    if (lowerSql.includes('insert into audit_logs')) {
+      const row = db.insert('audit_logs', {
+        user_id: params[0],
+        action: params[1],
+        entity_type: params[2],
+        entity_id: params[3],
+        old_value: params[4] ? (typeof params[4] === 'string' ? JSON.parse(params[4]) : params[4]) : null,
+        new_value: params[5] ? (typeof params[5] === 'string' ? JSON.parse(params[5]) : params[5]) : null,
+        ip_address: params[6] || null,
+        user_agent: params[7] || null,
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('select count(*) from audit_logs')) {
+      const rows = db.findAll('audit_logs');
+      return { rows: [{ count: rows.length }] };
+    }
+
+    if (lowerSql.includes('from audit_logs a')) {
+      if (lowerSql.includes('where a.id =')) {
+        const row = db.findById('audit_logs', params[0]);
+        return { rows: row ? [row] : [] };
+      }
+      return { rows: db.findAll('audit_logs') };
     }
 
     // Default

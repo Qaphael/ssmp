@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Organization, Season, Competition, Team, Player, TeamRegistration, RosterSubmission, Fixture, Pitch, UserRole, Official, TransferRequest, MatchEvent, NewsArticle, Media, Suspension } from '@ssmp/shared-types';
+import { Organization, Season, Competition, Team, Player, TeamRegistration, RosterSubmission, Fixture, Pitch, UserRole, Official, TransferRequest, MatchEvent, NewsArticle, Media, Suspension, AuditLog } from '@ssmp/shared-types';
 import { mockDb, detectConflicts } from './shared/api/mockDb';
 import Sidebar from './app/layout/Sidebar';
 import Header from './app/layout/Header';
@@ -12,6 +12,7 @@ import FixtureList from './features/fixtures/FixtureList';
 import TransfersDiscipline from './features/transfers/TransfersDiscipline';
 import OfficialsMatchEvents from './features/officials/OfficialsMatchEvents';
 import NewsMedia from './features/media/NewsMedia';
+import AuditLogViewer from './features/audit/AuditLogViewer';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -31,8 +32,10 @@ export default function App() {
   const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [media, setMedia] = useState<Media[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   useEffect(() => {
+    mockDb.seedAuditLogs();
     refreshAllData();
     setApiUrl(mockDb.getApiUrl());
   }, []);
@@ -52,6 +55,7 @@ export default function App() {
     setMatchEvents(mockDb.getEvents());
     setNews(mockDb.getNews());
     setMedia(mockDb.getMedia());
+    setAuditLogs(mockDb.getAuditLogs());
   };
 
   const handleSaveApiUrl = (url: string) => {
@@ -178,6 +182,10 @@ export default function App() {
                     teams={teams}
                     onActionCompleted={refreshAllData}
                   />
+                )}
+
+                {activeTab === 'audit' && (
+                  <AuditLogViewer auditLogs={auditLogs} />
                 )}
               </motion.div>
             </AnimatePresence>

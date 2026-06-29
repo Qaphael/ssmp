@@ -23,6 +23,7 @@ import {
   Media,
   NewsArticle,
   Standing,
+  AuditLog,
 } from '@ssmp/shared-types';
 
 // Storage keys
@@ -45,6 +46,7 @@ const SUSPENSIONS_KEY = 'sm_suspensions';
 const MEDIA_KEY = 'sm_media';
 const NEWS_KEY = 'sm_news';
 const STANDINGS_KEY = 'sm_standings';
+const AUDIT_KEY = 'sm_audit';
 
 // Helper to generate UUIDs if needed
 function generateId(prefix: string): string {
@@ -1351,5 +1353,73 @@ export const mockDb = {
     });
 
     return standingsList;
+  },
+
+  getAuditLogs(): AuditLog[] {
+    const raw = localStorage.getItem(AUDIT_KEY);
+    return raw ? JSON.parse(raw) : [];
+  },
+
+  addAuditLog(log: AuditLog) {
+    const logs = this.getAuditLogs();
+    logs.unshift(log);
+    localStorage.setItem(AUDIT_KEY, JSON.stringify(logs));
+  },
+
+  seedAuditLogs() {
+    const existing = this.getAuditLogs();
+    if (existing.length > 0) return;
+
+    const now = new Date().toISOString();
+    const demoLogs: AuditLog[] = [
+      {
+        id: 'audit-1',
+        userId: 'comp_admin-001',
+        action: 'team:create',
+        entityType: 'team',
+        entityId: 'team-1',
+        newValue: { name: 'Lincoln High Eagles', schoolName: 'Lincoln High' },
+        createdAt: now,
+      },
+      {
+        id: 'audit-2',
+        userId: 'comp_admin-001',
+        action: 'competition:update',
+        entityType: 'competition',
+        entityId: 'comp-fall-2026',
+        oldValue: { status: 'draft' },
+        newValue: { status: 'setup' },
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+      {
+        id: 'audit-3',
+        userId: 'system_admin-001',
+        action: 'player:create',
+        entityType: 'player',
+        entityId: 'player-demo-1',
+        newValue: { firstName: 'Marcus', lastName: 'Johnson', jerseyNumber: 10 },
+        createdAt: new Date(Date.now() - 7200000).toISOString(),
+      },
+      {
+        id: 'audit-4',
+        userId: 'comp_admin-001',
+        action: 'fixture:generate-round-robin',
+        entityType: 'fixture',
+        entityId: 'comp-fall-2026',
+        newValue: { count: 12 },
+        createdAt: new Date(Date.now() - 10800000).toISOString(),
+      },
+      {
+        id: 'audit-5',
+        userId: 'comp_admin-001',
+        action: 'team:approve-registration',
+        entityType: 'team',
+        entityId: 'team-2',
+        oldValue: { registrationStatus: 'pending' },
+        newValue: { registrationStatus: 'approved' },
+        createdAt: new Date(Date.now() - 14400000).toISOString(),
+      },
+    ];
+    localStorage.setItem(AUDIT_KEY, JSON.stringify(demoLogs));
   },
 };
