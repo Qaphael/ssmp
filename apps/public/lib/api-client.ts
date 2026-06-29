@@ -3,6 +3,7 @@ import type {
   Team,
   Player,
   Match,
+  MatchEvent,
   Organization,
   Season,
   Media,
@@ -77,11 +78,28 @@ export const apiClient = {
     if (params?.teamId) searchParams.append("teamId", params.teamId)
     if (params?.competitionId) searchParams.append("competitionId", params.competitionId)
 
-    const res = await fetch(`${API_URL}/api/matches?${searchParams}`, {
-      next: { revalidate: 60 }, // ISR: revalidate every minute for live scores
+    const res = await fetch(`${API_URL}/api/public/matches?${searchParams}`, {
+      next: { revalidate: 60 },
     })
     if (!res.ok) throw new Error("Failed to fetch matches")
     return res.json()
+  },
+
+  async getMatch(id: string): Promise<Match> {
+    const res = await fetch(`${API_URL}/api/public/matches/${id}`, {
+      next: { revalidate: 30 },
+    })
+    if (!res.ok) throw new Error("Failed to fetch match")
+    return res.json()
+  },
+
+  async getMatchEvents(matchId: string): Promise<MatchEvent[]> {
+    const res = await fetch(`${API_URL}/api/public/matches/${matchId}/events`, {
+      next: { revalidate: 10 },
+    })
+    if (!res.ok) throw new Error("Failed to fetch match events")
+    const data = await res.json()
+    return data.data || []
   },
 
   async getOrganizations(): Promise<Organization[]> {

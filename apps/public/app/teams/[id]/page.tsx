@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api-client"
 import { FixtureCard } from "@/components/fixture-card"
+import { TeamHeader } from "@/components/team-header"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -54,23 +55,7 @@ export default async function TeamDetailPage({
   return (
     <main className="container max-w-screen-2xl py-8 md:py-12">
       {/* Hero Section */}
-      <div
-        className="mb-8 rounded-lg p-8 text-white"
-        style={{
-          backgroundColor: team.primaryColor || "#1f2937",
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
-              {team.schoolName}
-            </h1>
-            {team.shortName && (
-              <p className="mt-2 text-lg opacity-90">{team.shortName}</p>
-            )}
-          </div>
-        </div>
-      </div>
+      <TeamHeader team={team} />
 
       {/* Tabs */}
       <Tabs defaultValue="roster" className="w-full">
