@@ -17,17 +17,26 @@ import {
   Eye,
   Camera,
 } from 'lucide-react';
-import { NewsArticle, Media, Team } from '@ssmp/shared-types';
+import { NewsArticle, Media, Team, Competition } from '@ssmp/shared-types';
 import { mockDb } from '../../shared/api/mockDb';
+import MediaGallery from './MediaGallery';
+
+interface MatchRef {
+  id: string;
+  homeTeamId: string;
+  awayTeamId: string;
+}
 
 interface NewsMediaProps {
   news: NewsArticle[];
   media: Media[];
   teams: Team[];
+  competitions: Competition[];
+  matches: MatchRef[];
   onActionCompleted: () => void;
 }
 
-export default function NewsMedia({ news, media, teams, onActionCompleted }: NewsMediaProps) {
+export default function NewsMedia({ news, media, teams, competitions, matches, onActionCompleted }: NewsMediaProps) {
   const [activeSubTab, setActiveSubTab] = useState<'news' | 'media'>('news');
 
   // News State
@@ -311,108 +320,13 @@ export default function NewsMedia({ news, media, teams, onActionCompleted }: New
       )}
 
       {activeSubTab === 'media' && (
-        <div className="space-y-8">
-          {/* Pending moderation */}
-          <div>
-            <h2 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-4">
-              Pending Photo Moderation Queue
-            </h2>
-
-            {pendingMedia.length === 0 ? (
-              <div className="border border-dashed border-[#E5E5E1] p-12 text-center bg-white">
-                <Camera className="h-10 w-10 text-slate-300 mx-auto stroke-1" />
-                <p className="mt-4 text-sm font-serif italic text-slate-500">
-                  No photography attachments are pending moderation.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {pendingMedia.map((m) => (
-                  <div
-                    key={m.id}
-                    className="border border-[#121212] bg-white overflow-hidden rounded-none shadow-sm relative group"
-                  >
-                    <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
-                      <img
-                        src={m.url}
-                        alt="Moderation pending"
-                        className="h-full w-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute top-2 left-2 bg-[#121212] text-white text-[9px] uppercase font-bold font-mono px-2 py-0.5">
-                        PENDING AUDIT
-                      </div>
-                    </div>
-
-                    <div className="p-4 space-y-3">
-                      <p className="text-[10px] text-slate-400 font-mono font-bold">
-                        Uploaded by: {getTeamName(m.teamId) || 'Coach Agent'}
-                      </p>
-                      {m.caption && (
-                        <p className="text-xs text-slate-600 font-serif italic">
-                          "{m.caption}"
-                        </p>
-                      )}
-
-                      <div className="pt-3 border-t border-slate-100 flex gap-2 justify-between">
-                        <button
-                          onClick={() => handleReviewMedia(m.id, true)}
-                          className="px-3 py-1.5 bg-[#121212] hover:bg-[#D43D2A] text-white font-bold text-[9px] uppercase tracking-wider cursor-pointer flex-1"
-                        >
-                          Approve Photograph
-                        </button>
-                        <button
-                          onClick={() => handleReviewMedia(m.id, false)}
-                          className="px-3 py-1.5 border border-slate-200 hover:border-red-600 hover:text-red-700 text-slate-400 font-bold text-[9px] uppercase tracking-wider cursor-pointer"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Approved catalog */}
-          <div>
-            <h2 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-4">
-              Approved Publications Gallery
-            </h2>
-
-            {approvedMedia.length === 0 ? (
-              <p className="text-slate-400 italic font-serif text-center py-6 bg-white border border-[#E5E5E1]">
-                No verified publications on record.
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {approvedMedia.map((m) => (
-                  <div
-                    key={m.id}
-                    className="border border-[#E5E5E1] bg-white overflow-hidden rounded-none relative group hover:border-[#121212] transition-all"
-                  >
-                    <div className="aspect-square overflow-hidden bg-slate-50">
-                      <img
-                        src={m.url}
-                        alt="Approved catalog"
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                    {m.caption && (
-                      <div className="p-2 border-t border-slate-100">
-                        <p className="text-[9px] text-slate-500 truncate font-serif" title={m.caption}>
-                          {m.caption}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <MediaGallery
+          media={media}
+          competitions={competitions}
+          teams={teams}
+          matches={matches}
+          onActionCompleted={onActionCompleted}
+        />
       )}
     </div>
   );

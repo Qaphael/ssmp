@@ -1192,6 +1192,12 @@ export const mockDb = {
     }
   },
 
+  addMedia(item: Media): void {
+    const media = this.getMedia();
+    media.unshift(item);
+    setStored(MEDIA_KEY, media);
+  },
+
   // News Articles
   getNews(): NewsArticle[] {
     return getStored(NEWS_KEY, initialNews);

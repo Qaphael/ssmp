@@ -187,6 +187,8 @@ export default function App() {
                     news={news}
                     media={media}
                     teams={teams}
+                    competitions={competitions}
+                    matches={fixtures.map((f) => ({ id: f.id, homeTeamId: f.homeTeamId, awayTeamId: f.awayTeamId }))}
                     onActionCompleted={refreshAllData}
                   />
                 )}

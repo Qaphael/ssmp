@@ -15,6 +15,7 @@ const disciplineRoutes = require('./modules/discipline/discipline.routes');
 const transferRoutes = require('./modules/transfers/transfer.routes');
 const auditRoutes = require('./modules/audit/audit.routes');
 const notificationRoutes = require('./modules/notifications/notification.routes');
+const mediaRoutes = require('./modules/media/media.routes');
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/discipline', disciplineRoutes);
 app.use('/api/transfers', transferRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/media', mediaRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });

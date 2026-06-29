@@ -5,6 +5,7 @@ import type {
   Match,
   Organization,
   Season,
+  Media,
 } from "@ssmp/shared-types"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
@@ -97,5 +98,26 @@ export const apiClient = {
     })
     if (!res.ok) throw new Error("Failed to fetch seasons")
     return res.json()
+  },
+
+  async getMedia(filters?: {
+    competitionId?: string
+    matchId?: string
+    teamId?: string
+    type?: string
+  }): Promise<Media[]> {
+    const params = new URLSearchParams()
+    if (filters?.competitionId) params.append("competitionId", filters.competitionId)
+    if (filters?.matchId) params.append("matchId", filters.matchId)
+    if (filters?.teamId) params.append("teamId", filters.teamId)
+    if (filters?.type) params.append("type", filters.type)
+    params.append("isApproved", "true")
+    const qs = params.toString()
+    const res = await fetch(`${API_URL}/api/media?${qs}`, {
+      next: { revalidate: 300 },
+    })
+    if (!res.ok) throw new Error("Failed to fetch media")
+    const data = await res.json()
+    return data.data || []
   },
 }

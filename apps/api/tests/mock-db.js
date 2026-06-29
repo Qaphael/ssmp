@@ -22,6 +22,7 @@ class MockDB {
       audit_logs: new Map(),
       push_subscriptions: new Map(),
       device_tokens: new Map(),
+      media: new Map(),
     };
     this.autoId = 1;
   }
@@ -889,6 +890,55 @@ const mockPool = {
     if (lowerSql.includes('select team_id from players where id')) {
       const player = db.findById('players', params[0]);
       return { rows: player ? [{ team_id: player.team_id }] : [] };
+    }
+
+    // Media
+    if (lowerSql.includes('insert into media')) {
+      const row = db.insert('media', {
+        uploaded_by: params[0],
+        type: params[1],
+        url: params[2],
+        filename: params[3],
+        file_size: params[4],
+        mime_type: params[5],
+        caption: params[6],
+        match_id: params[7],
+        team_id: params[8],
+        player_id: params[9],
+        competition_id: params[10],
+        is_approved: false,
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('select count(*) from media')) {
+      const rows = db.findAll('media');
+      return { rows: [{ count: rows.length }] };
+    }
+
+    if (lowerSql.includes('from media m')) {
+      if (lowerSql.includes('where m.id =')) {
+        const row = db.findById('media', params[0]);
+        return { rows: row ? [row] : [] };
+      }
+      let rows = db.findAll('media');
+      if (lowerSql.includes('m.competition_id =')) rows = rows.filter((r) => r.competition_id === params[0]);
+      if (lowerSql.includes('m.match_id =')) rows = rows.filter((r) => r.match_id === params[0]);
+      if (lowerSql.includes('m.team_id =')) rows = rows.filter((r) => r.team_id === params[0]);
+      if (lowerSql.includes('m.type =')) rows = rows.filter((r) => r.type === params[0]);
+      if (lowerSql.includes('m.is_approved =')) rows = rows.filter((r) => r.is_approved === params[0]);
+      return { rows };
+    }
+
+    if (lowerSql.includes('update media') && lowerSql.includes('is_approved')) {
+      const id = params[1];
+      const row = db.update('media', id, { is_approved: true, approved_by: params[0] });
+      return { rows: row ? [row] : [] };
+    }
+
+    if (lowerSql.includes('delete from media')) {
+      db.delete('media', params[0]);
+      return { rows: [{ id: params[0] }] };
     }
 
     // Default

@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/api-client"
 import { FixtureCard } from "@/components/fixture-card"
 import { StandingsTable } from "@/components/standings-table"
+import { MediaGallery } from "@/components/media-gallery"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
@@ -33,12 +34,14 @@ export default async function CompetitionDetailPage({
   let competition: any = null
   let matches: any[] = []
   let teams: any[] = []
+  let media: any[] = []
   let error: string | null = null
 
   try {
     competition = await apiClient.getCompetition(params.id)
     teams = await apiClient.getTeams(params.id)
     matches = await apiClient.getMatches({ competitionId: params.id })
+    media = await apiClient.getMedia({ competitionId: params.id })
   } catch (err) {
     error = "Failed to load competition details"
   }
@@ -79,9 +82,10 @@ export default async function CompetitionDetailPage({
 
       {/* Tabs */}
       <Tabs defaultValue="standings" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">
           <TabsTrigger value="standings">Standings</TabsTrigger>
           <TabsTrigger value="fixtures">Fixtures</TabsTrigger>
+          <TabsTrigger value="media">Media</TabsTrigger>
           {competition.enableGroups && (
             <TabsTrigger value="groups">Groups</TabsTrigger>
           )}
@@ -125,6 +129,11 @@ export default async function CompetitionDetailPage({
               </Card>
             )}
           </div>
+        </TabsContent>
+
+        {/* Media Tab */}
+        <TabsContent value="media" className="mt-6">
+          <MediaGallery media={media} />
         </TabsContent>
 
         {/* Groups Tab */}
