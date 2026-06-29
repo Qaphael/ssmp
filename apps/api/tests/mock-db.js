@@ -16,6 +16,7 @@ class MockDB {
       match_events: new Map(),
       cards: new Map(),
       suspensions: new Map(),
+      transfer_requests: new Map(),
       standings: new Map(),
       notifications: new Map(),
     };
@@ -306,6 +307,9 @@ const mockPool = {
       const data = {};
       if (lowerSql.includes('first_name =')) data.first_name = params[0];
       if (lowerSql.includes('last_name =')) data.last_name = params[1];
+      if (lowerSql.includes('team_id =') && lowerSql.includes('updated_at = now()')) {
+        data.team_id = params[0];
+      }
       if (lowerSql.includes("jsonb_build_object")) {
         data.status = 'injured';
         data.injury_details = {
@@ -641,6 +645,86 @@ const mockPool = {
     if (lowerSql.includes('select id from players where team_id')) {
       const rows = db.findAll('players').filter((r) => r.team_id === params[0]);
       return { rows: rows.map((r) => ({ id: r.id })) };
+    }
+
+    // Transfer Requests
+    if (lowerSql.includes('insert into transfer_requests')) {
+      const row = db.insert('transfer_requests', {
+        player_id: params[0],
+        from_team_id: params[1],
+        to_team_id: params[2],
+        competition_id: params[3],
+        reason: params[4],
+        requested_by: params[5],
+        status: 'pending',
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('select count(*) from transfer_requests')) {
+      let rows = db.findAll('transfer_requests');
+      if (lowerSql.includes('where')) {
+        if (lowerSql.includes('tr.competition_id')) rows = rows.filter((r) => r.competition_id === params[0]);
+        if (lowerSql.includes('tr.status')) rows = rows.filter((r) => r.status === params[lowerSql.includes('tr.competition_id') ? 1 : 0]);
+        if (lowerSql.includes('tr.player_id')) {
+          const idx = lowerSql.includes('tr.competition_id') ? (lowerSql.includes('tr.status') ? 2 : 1) : (lowerSql.includes('tr.status') ? 1 : 0);
+          rows = rows.filter((r) => r.player_id === params[idx]);
+        }
+      }
+      return { rows: [{ count: rows.length }] };
+    }
+
+    if (lowerSql.includes('from transfer_requests tr') && lowerSql.includes('where tr.id')) {
+      const row = db.findById('transfer_requests', params[0]);
+      if (!row) return { rows: [] };
+      const player = db.findById('players', row.player_id) || {};
+      const fromTeam = db.findById('teams', row.from_team_id) || {};
+      const toTeam = db.findById('teams', row.to_team_id) || {};
+      const comp = db.findById('competitions', row.competition_id) || {};
+      return { rows: [{
+        ...row,
+        player_first_name: player.first_name || '',
+        player_last_name: player.last_name || '',
+        from_team_name: fromTeam.name || '',
+        to_team_name: toTeam.name || '',
+        competition_name: comp.name || '',
+      }] };
+    }
+
+    if (lowerSql.includes('from transfer_requests tr')) {
+      let rows = db.findAll('transfer_requests');
+      if (lowerSql.includes('where')) {
+        if (lowerSql.includes('tr.competition_id')) rows = rows.filter((r) => r.competition_id === params[0]);
+        if (lowerSql.includes('tr.status')) {
+          const idx = lowerSql.includes('tr.competition_id') ? 1 : 0;
+          rows = rows.filter((r) => r.status === params[idx]);
+        }
+      }
+      const result = rows.map((r) => {
+        const player = db.findById('players', r.player_id) || {};
+        const fromTeam = db.findById('teams', r.from_team_id) || {};
+        const toTeam = db.findById('teams', r.to_team_id) || {};
+        const comp = db.findById('competitions', r.competition_id) || {};
+        return {
+          ...r,
+          player_first_name: player.first_name || '',
+          player_last_name: player.last_name || '',
+          from_team_name: fromTeam.name || '',
+          to_team_name: toTeam.name || '',
+          competition_name: comp.name || '',
+        };
+      });
+      return { rows: result };
+    }
+
+    if (lowerSql.includes('update transfer_requests')) {
+      const id = params[params.length - 1];
+      const data = {};
+      if (lowerSql.includes('status =')) data.status = params[0];
+      if (lowerSql.includes('reviewed_by =')) data.reviewed_by = params[1];
+      if (lowerSql.includes('rejection_reason =')) data.rejection_reason = params[2];
+      const row = db.update('transfer_requests', id, data);
+      return { rows: row ? [row] : [] };
     }
 
     // Default
