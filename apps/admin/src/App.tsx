@@ -36,6 +36,7 @@ export default function App() {
 
   useEffect(() => {
     mockDb.seedAuditLogs();
+    mockDb.seedNotifications();
     refreshAllData();
     setApiUrl(mockDb.getApiUrl());
   }, []);
@@ -106,11 +107,17 @@ export default function App() {
               >
                 {activeTab === 'dashboard' && (
                   <Dashboard
+                    currentRole={currentRole}
                     competitions={competitions}
                     teams={teams}
                     players={players}
                     registrations={registrations}
                     rosters={rosters}
+                    fixtures={fixtures}
+                    officials={officials}
+                    suspensions={suspensions}
+                    matchEvents={matchEvents}
+                    notifications={mockDb.getNotifications()}
                     clashCount={fixtureClashCount}
                     onNavigate={setActiveTab}
                   />

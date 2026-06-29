@@ -24,6 +24,7 @@ export default function Header({ currentRole, onChangeRole, apiUrl, onSaveApiUrl
     { value: 'system_admin', label: 'System Admin' },
     { value: 'registrar', label: 'Registrar' },
     { value: 'referee_coordinator', label: 'Referee Coordinator' },
+    { value: 'official', label: 'Official' },
     { value: 'coach', label: 'Coach' },
   ];
 

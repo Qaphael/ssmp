@@ -24,6 +24,7 @@ import {
   NewsArticle,
   Standing,
   AuditLog,
+  Notification,
 } from '@ssmp/shared-types';
 
 // Storage keys
@@ -47,6 +48,7 @@ const MEDIA_KEY = 'sm_media';
 const NEWS_KEY = 'sm_news';
 const STANDINGS_KEY = 'sm_standings';
 const AUDIT_KEY = 'sm_audit';
+const NOTIFICATIONS_KEY = 'sm_notifications';
 
 // Helper to generate UUIDs if needed
 function generateId(prefix: string): string {
@@ -1421,5 +1423,65 @@ export const mockDb = {
       },
     ];
     localStorage.setItem(AUDIT_KEY, JSON.stringify(demoLogs));
+  },
+
+  getNotifications(): Notification[] {
+    const raw = localStorage.getItem(NOTIFICATIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  },
+
+  seedNotifications() {
+    const existing = this.getNotifications();
+    if (existing.length > 0) return;
+
+    const now = new Date().toISOString();
+    const demoNotifications: Notification[] = [
+      {
+        id: 'notif-1',
+        userId: 'comp_admin-001',
+        type: 'fixture_published',
+        title: 'Fixtures Published',
+        message: 'Round 1 fixtures for Fall Championship 2026 have been published.',
+        isRead: false,
+        createdAt: now,
+      },
+      {
+        id: 'notif-2',
+        userId: 'comp_admin-001',
+        type: 'official_assigned',
+        title: 'Official Assigned',
+        message: 'Referee James Wilson has been assigned to Lincoln vs Washington.',
+        isRead: false,
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+      {
+        id: 'notif-3',
+        userId: 'coach-001',
+        type: 'roster_approved',
+        title: 'Roster Approved',
+        message: 'Your roster submission for Fall Championship 2026 has been approved.',
+        isRead: true,
+        createdAt: new Date(Date.now() - 7200000).toISOString(),
+      },
+      {
+        id: 'notif-4',
+        userId: 'coach-001',
+        type: 'suspension_applied',
+        title: 'Player Suspended',
+        message: 'Marcus Johnson has been suspended for 1 match (2 yellow cards).',
+        isRead: false,
+        createdAt: new Date(Date.now() - 10800000).toISOString(),
+      },
+      {
+        id: 'notif-5',
+        userId: 'official-001',
+        type: 'official_assigned',
+        title: 'Match Assignment',
+        message: 'You have been assigned to Lincoln High Eagles vs Washington Warriors on Jun 30.',
+        isRead: false,
+        createdAt: new Date(Date.now() - 14400000).toISOString(),
+      },
+    ];
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(demoNotifications));
   },
 };
