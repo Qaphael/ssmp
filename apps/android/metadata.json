@@ -1,0 +1,6 @@
+{
+  "name": "Team Manager",
+  "description": "A comprehensive team management app for sports coaches to manage rosters, matches, starting lineups, and team updates.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

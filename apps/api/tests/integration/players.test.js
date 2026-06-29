@@ -241,4 +241,61 @@ describe('Players', () => {
       expect(res.status).toBe(403);
     });
   });
+
+  describe('Injury Tracking', () => {
+    it('marks player as injured with details', async () => {
+      const player = db.insert('players', {
+        team_id: 'team-001', first_name: 'Alex', last_name: 'Morgan',
+        jersey_number: 10, date_of_birth: '2009-01-01', status: 'active',
+      });
+
+      const res = await request(app)
+        .patch(`/api/players/${player.id}/injury`)
+        .set('Authorization', `Bearer ${tokens.coach}`)
+        .send({
+          description: 'ACL tear',
+          expectedReturnDate: '2027-06-01',
+          medicalNotes: 'Surgery scheduled for next week',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('injured');
+      expect(res.body.data.injury_details).toBeDefined();
+      expect(res.body.data.injury_details.description).toBe('ACL tear');
+      expect(res.body.data.injury_details.expected_return_date).toBe('2027-06-01');
+    });
+
+    it('clears injury status', async () => {
+      const player = db.insert('players', {
+        team_id: 'team-001', first_name: 'Sam', last_name: 'Kerr',
+        jersey_number: 9, date_of_birth: '2009-01-01', status: 'injured',
+        injury_details: { description: 'Hamstring', expected_return_date: '2027-04-01' },
+      });
+
+      const res = await request(app)
+        .delete(`/api/players/${player.id}/injury`)
+        .set('Authorization', `Bearer ${tokens.coach}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('active');
+      expect(res.body.data.injury_details).toBeNull();
+    });
+
+    it('rejects official on injury update', async () => {
+      const player = db.insert('players', {
+        team_id: 'team-001', first_name: 'Test', last_name: 'Player',
+        jersey_number: 5, date_of_birth: '2009-01-01', status: 'active',
+      });
+
+      const res = await request(app)
+        .patch(`/api/players/${player.id}/injury`)
+        .set('Authorization', `Bearer ${tokens.official}`)
+        .send({
+          description: 'Test injury',
+          expectedReturnDate: '2027-05-01',
+        });
+
+      expect(res.status).toBe(403);
+    });
+  });
 });

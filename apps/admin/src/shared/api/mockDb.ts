@@ -985,6 +985,16 @@ export const mockDb = {
     return newPlayer;
   },
 
+  updatePlayer(id: string, updates: Partial<Player>): Player | null {
+    const players = this.getPlayers();
+    const idx = players.findIndex((p) => p.id === id);
+    if (idx === -1) return null;
+    const updated = { ...players[idx], ...updates, updatedAt: new Date().toISOString() } as Player;
+    players[idx] = updated;
+    setStored(PLAYERS_KEY, players);
+    return updated;
+  },
+
   // Officials
   getOfficials(): Official[] {
     return getStored(OFFICIALS_KEY, initialOfficials);

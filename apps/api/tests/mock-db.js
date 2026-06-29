@@ -301,11 +301,23 @@ const mockPool = {
       return { rows: db.findAll('players') };
     }
 
-    if (lowerSql.includes('update players set')) {
+    if (lowerSql.includes('update players') && lowerSql.includes('set')) {
       const id = params[params.length - 1];
       const data = {};
       if (lowerSql.includes('first_name =')) data.first_name = params[0];
       if (lowerSql.includes('last_name =')) data.last_name = params[1];
+      if (lowerSql.includes("jsonb_build_object")) {
+        data.status = 'injured';
+        data.injury_details = {
+          description: params[0],
+          expected_return_date: params[1],
+          medical_notes: params[2] || null,
+        };
+      }
+      if (lowerSql.includes("status = 'active'") && lowerSql.includes('injury_details = null')) {
+        data.status = 'active';
+        data.injury_details = null;
+      }
       const row = db.update('players', id, data);
       return { rows: row ? [row] : [] };
     }

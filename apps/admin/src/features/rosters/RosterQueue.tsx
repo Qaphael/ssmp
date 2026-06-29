@@ -16,6 +16,8 @@ import {
   Activity,
   Plus,
   ArrowRight,
+  HeartPulse,
+  Stethoscope,
 } from 'lucide-react';
 import { RosterSubmission, Team, Player, Competition } from '@ssmp/shared-types';
 import { mockDb } from '../../shared/api/mockDb';
@@ -54,6 +56,12 @@ export default function RosterQueue({
   const [newPlayerPos, setNewPlayerPos] = useState('forward');
   const [newPlayerDOB, setNewPlayerDOB] = useState('2010-01-01');
   const [newPlayerNat, setNewPlayerNat] = useState('District Local');
+
+  // Injury tracking state
+  const [injuryPlayerId, setInjuryPlayerId] = useState<string | null>(null);
+  const [injuryDescription, setInjuryDescription] = useState('');
+  const [injuryReturnDate, setInjuryReturnDate] = useState('');
+  const [injuryMedicalNotes, setInjuryMedicalNotes] = useState('');
 
   // Filter rosters
   const filteredRosters = rosters.filter((ros) => {
@@ -157,6 +165,39 @@ export default function RosterQueue({
     setNewPlayerLast('');
     setNewPlayerJersey(10);
     setShowAddPlayerModal(null);
+    onReviewCompleted();
+  };
+
+  // Injury handlers
+  const handleMarkInjured = (playerId: string) => {
+    setInjuryPlayerId(playerId);
+    setInjuryDescription('');
+    setInjuryReturnDate('');
+    setInjuryMedicalNotes('');
+  };
+
+  const handleConfirmInjury = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!injuryPlayerId || !injuryDescription.trim() || !injuryReturnDate) return;
+
+    mockDb.updatePlayer(injuryPlayerId, {
+      status: 'injured',
+      injuryDetails: {
+        description: injuryDescription.trim(),
+        expectedReturnDate: injuryReturnDate,
+        medicalNotes: injuryMedicalNotes.trim() || undefined,
+      },
+    });
+
+    setInjuryPlayerId(null);
+    onReviewCompleted();
+  };
+
+  const handleClearInjury = (playerId: string) => {
+    mockDb.updatePlayer(playerId, {
+      status: 'active',
+      injuryDetails: undefined,
+    });
     onReviewCompleted();
   };
 
@@ -384,9 +425,9 @@ export default function RosterQueue({
                           <th className="px-4 py-3.5 w-16 text-center">No.</th>
                           <th className="px-4 py-3.5">Athlete Name</th>
                           <th className="px-4 py-3.5">Position</th>
+                          <th className="px-4 py-3.5">Status</th>
                           <th className="px-4 py-3.5">Date of Birth</th>
-                          <th className="px-4 py-3.5">Nationality</th>
-                          <th className="px-4 py-3.5 text-right">Metrics (cm/kg)</th>
+                          <th className="px-4 py-3.5 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#E5E5E1] text-xs text-[#121212]">
@@ -403,14 +444,46 @@ export default function RosterQueue({
                             <td className="px-4 py-3 capitalize text-slate-600 font-medium">
                               {player.position || 'all-round'}
                             </td>
+                            <td className="px-4 py-3">
+                              {player.status === 'injured' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 text-[10px] font-bold uppercase tracking-wider border border-red-200">
+                                  <HeartPulse className="h-3 w-3" />
+                                  Injured
+                                </span>
+                              ) : player.status === 'suspended' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wider border border-amber-200">
+                                  Suspended
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold uppercase tracking-wider border border-green-200">
+                                  Active
+                                </span>
+                              )}
+                              {player.status === 'injured' && player.injuryDetails && (
+                                <p className="mt-1 text-[9px] text-slate-500 font-mono">
+                                  Return: {player.injuryDetails.expectedReturnDate}
+                                </p>
+                              )}
+                            </td>
                             <td className="px-4 py-3 text-[#8b8b85] font-mono">
                               {new Date(player.dateOfBirth).toLocaleDateString()}
                             </td>
-                            <td className="px-4 py-3 text-slate-600 font-medium">
-                              {player.nationality || 'United States'}
-                            </td>
-                            <td className="px-4 py-3 text-right font-mono text-[#8b8b85] text-[11px]">
-                              {player.height ? `${player.height}cm` : '--'} / {player.weight ? `${player.weight}kg` : '--'}
+                            <td className="px-4 py-3 text-right">
+                              {player.status === 'injured' ? (
+                                <button
+                                  onClick={() => handleClearInjury(player.id)}
+                                  className="text-[10px] font-bold uppercase tracking-wider text-green-600 hover:text-green-800 cursor-pointer"
+                                >
+                                  Clear
+                                </button>
+                              ) : player.status === 'active' ? (
+                                <button
+                                  onClick={() => handleMarkInjured(player.id)}
+                                  className="text-[10px] font-bold uppercase tracking-wider text-red-600 hover:text-red-800 cursor-pointer"
+                                >
+                                  Mark Injured
+                                </button>
+                              ) : null}
                             </td>
                           </tr>
                         ))}
@@ -625,6 +698,85 @@ export default function RosterQueue({
                     id="submit-sim-player-btn"
                   >
                     Register Athlete
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Mark Injured Dialog */}
+      {injuryPlayerId && (() => {
+        const injuredPlayer = players.find((p) => p.id === injuryPlayerId);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#121212]/40 p-4 backdrop-blur-xs">
+            <div className="w-full max-w-md rounded-none bg-white p-6 border border-[#E5E5E1] shadow-none">
+              <h3 className="text-lg font-serif italic font-bold text-[#121212] flex items-center gap-2">
+                <Stethoscope className="h-4 w-4 text-[#D43D2A]" />
+                Report Injury: {injuredPlayer?.firstName} {injuredPlayer?.lastName}
+              </h3>
+              <p className="mt-1 text-xs text-[#8b8b85] font-medium leading-relaxed">
+                Mark this player as injured. They will be unavailable for lineup submissions until cleared.
+              </p>
+
+              <form onSubmit={handleConfirmInjury} className="mt-4 space-y-4">
+                <div>
+                  <label htmlFor="injury-desc" className="block text-[9px] font-bold uppercase tracking-widest text-[#8b8b85] mb-2">
+                    Injury Description *
+                  </label>
+                  <input
+                    id="injury-desc"
+                    type="text"
+                    required
+                    placeholder="e.g. ACL tear, hamstring strain, concussion"
+                    value={injuryDescription}
+                    onChange={(e) => setInjuryDescription(e.target.value)}
+                    className="w-full rounded-none border border-[#E5E5E1] px-3 py-2.5 text-xs focus:border-[#121212] focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="injury-return" className="block text-[9px] font-bold uppercase tracking-widest text-[#8b8b85] mb-2">
+                    Expected Return Date *
+                  </label>
+                  <input
+                    id="injury-return"
+                    type="date"
+                    required
+                    value={injuryReturnDate}
+                    onChange={(e) => setInjuryReturnDate(e.target.value)}
+                    className="w-full rounded-none border border-[#E5E5E1] px-3 py-2.5 text-xs focus:border-[#121212] focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="injury-notes" className="block text-[9px] font-bold uppercase tracking-widest text-[#8b8b85] mb-2">
+                    Medical Notes (optional)
+                  </label>
+                  <textarea
+                    id="injury-notes"
+                    rows={3}
+                    placeholder="Treatment plan, rehab schedule, doctor recommendations..."
+                    value={injuryMedicalNotes}
+                    onChange={(e) => setInjuryMedicalNotes(e.target.value)}
+                    className="w-full rounded-none border border-[#E5E5E1] p-3 text-xs focus:border-[#121212] focus:outline-hidden"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-[#E5E5E1] pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setInjuryPlayerId(null)}
+                    className="rounded-none border border-[#E5E5E1] px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#8b8b85] hover:bg-[#FBFBF9] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-none bg-red-600 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-red-700 cursor-pointer"
+                  >
+                    Confirm Injury
                   </button>
                 </div>
               </form>
