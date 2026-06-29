@@ -1,5 +1,6 @@
 const { pool } = require('../../config/db');
 const { createAuditLog } = require('../../middleware/audit');
+const notificationService = require('../../services/notification.service');
 
 class TeamService {
   async list(filters, userId, userRole) {
@@ -173,6 +174,14 @@ class TeamService {
     );
     if (auditCtx && result.rows[0]) {
       await createAuditLog({ ...auditCtx, action: 'team:approve-roster', entityType: 'team', entityId: teamId, oldValue: old, newValue: result.rows[0] });
+    }
+    if (result.rows[0]) {
+      const team = result.rows[0];
+      if (status === 'approved') {
+        await notificationService.rosterApproved(teamId, team.competition_id);
+      } else if (status === 'rejected') {
+        await notificationService.rosterRejected(teamId, team.competition_id);
+      }
     }
     return result.rows[0] || null;
   }

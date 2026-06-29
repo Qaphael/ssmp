@@ -128,20 +128,17 @@ class TransferService {
         fromTeamId: transfer.from_team_id,
         toTeamId: transfer.to_team_id,
       });
+
+      await notificationService.transferApproved(updated);
     } else {
       socketService.broadcastToAll('transfer_rejected', {
         transferId: id,
         playerId: transfer.player_id,
         rejectionReason,
       });
-    }
 
-    notificationService.log(
-      status === 'approved' ? 'transfer_approved' : 'transfer_rejected',
-      `Transfer ${status}`,
-      `Player transfer request ${status}${rejectionReason ? ': ' + rejectionReason : ''}`,
-      { transferId: id, playerId: transfer.player_id, status }
-    );
+      await notificationService.transferRejected(updated, rejectionReason);
+    }
 
     if (auditCtx) {
       await createAuditLog({ ...auditCtx, action: `transfer:${status}`, entityType: 'transfer_request', entityId: id, oldValue: old, newValue: updated });

@@ -1,5 +1,6 @@
 const { pool } = require('../config/db');
 const socketService = require('./socket.service');
+const notificationService = require('./notification.service');
 
 class DisciplineService {
   async processCard(matchId, playerId, teamId, cardType, minute, competitionId) {
@@ -83,6 +84,13 @@ class DisciplineService {
       reason,
       matchesCount,
     });
+
+    // Look up team_id for the player to trigger notifications
+    const playerResult = await pool.query(`SELECT team_id FROM players WHERE id = $1`, [playerId]);
+    const teamId = playerResult.rows[0]?.team_id;
+    if (teamId) {
+      await notificationService.suspensionApplied(playerId, teamId, reason, matchesCount);
+    }
 
     console.log(`[DISCIPLINE] Suspension created for player ${playerId}: ${reason} (${matchesCount} matches)`);
 

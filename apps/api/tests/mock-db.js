@@ -20,6 +20,8 @@ class MockDB {
       standings: new Map(),
       notifications: new Map(),
       audit_logs: new Map(),
+      push_subscriptions: new Map(),
+      device_tokens: new Map(),
     };
     this.autoId = 1;
   }
@@ -754,6 +756,139 @@ const mockPool = {
         return { rows: row ? [row] : [] };
       }
       return { rows: db.findAll('audit_logs') };
+    }
+
+    // Notifications (bulk insert with multiple value tuples)
+    if (lowerSql.includes('insert into notifications') && lowerSql.includes('values')) {
+      const rows = [];
+      // Parse bulk insert: extract user_id, type, title, message, data from params
+      // Bulk insert has 5 params per row
+      const paramsPerRow = 5;
+      const numRows = Math.floor(params.length / paramsPerRow);
+      for (let i = 0; i < numRows; i++) {
+        const offset = i * paramsPerRow;
+        const row = db.insert('notifications', {
+          user_id: params[offset],
+          type: params[offset + 1],
+          title: params[offset + 2],
+          message: params[offset + 3],
+          data: params[offset + 4] ? (typeof params[offset + 4] === 'string' ? JSON.parse(params[offset + 4]) : params[offset + 4]) : null,
+        });
+        rows.push(row);
+      }
+      return { rows };
+    }
+
+    // Single notification insert
+    if (lowerSql.includes('insert into notifications')) {
+      const row = db.insert('notifications', {
+        user_id: params[0],
+        type: params[1],
+        title: params[2],
+        message: params[3],
+        data: params[4] ? (typeof params[4] === 'string' ? JSON.parse(params[4]) : params[4]) : null,
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('select count(*) from notifications')) {
+      const rows = db.findAll('notifications');
+      return { rows: [{ count: rows.length }] };
+    }
+
+    if (lowerSql.includes('from notifications') && lowerSql.includes('where')) {
+      let rows = db.findAll('notifications');
+      if (lowerSql.includes('user_id =')) rows = rows.filter((r) => r.user_id === params[0]);
+      return { rows };
+    }
+
+    if (lowerSql.includes('update notifications') && lowerSql.includes('is_read')) {
+      const ids = params[0];
+      const rows = [];
+      for (const id of ids) {
+        const row = db.update('notifications', id, { is_read: true, read_at: new Date().toISOString() });
+        if (row) rows.push(row);
+      }
+      return { rows };
+    }
+
+    // Push Subscriptions
+    if (lowerSql.includes('insert into push_subscriptions')) {
+      const row = db.insert('push_subscriptions', {
+        user_id: params[0],
+        endpoint: params[1],
+        p256dh: params[2],
+        auth: params[3],
+        user_agent: params[4] || null,
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('delete from push_subscriptions')) {
+      const rows = db.findAll('push_subscriptions').filter((r) => r.endpoint === params[0]);
+      for (const r of rows) db.delete('push_subscriptions', r.id);
+      return { rows: [{ id: 'deleted' }] };
+    }
+
+    if (lowerSql.includes('from push_subscriptions') && lowerSql.includes('user_id')) {
+      let rows = db.findAll('push_subscriptions');
+      if (lowerSql.includes('any($1)') || lowerSql.includes('where user_id')) {
+        const userIds = Array.isArray(params[0]) ? params[0] : [params[0]];
+        rows = rows.filter((r) => userIds.includes(r.user_id));
+      }
+      return { rows };
+    }
+
+    // Device Tokens
+    if (lowerSql.includes('insert into device_tokens')) {
+      const row = db.insert('device_tokens', {
+        user_id: params[0],
+        token: params[1],
+        platform: params[2],
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('delete from device_tokens')) {
+      const rows = db.findAll('device_tokens').filter((r) => r.token === params[0]);
+      for (const r of rows) db.delete('device_tokens', r.id);
+      return { rows: [{ id: 'deleted' }] };
+    }
+
+    if (lowerSql.includes('from device_tokens') && lowerSql.includes('user_id')) {
+      let rows = db.findAll('device_tokens');
+      if (lowerSql.includes('any($1)') || lowerSql.includes('where user_id')) {
+        const userIds = Array.isArray(params[0]) ? params[0] : [params[0]];
+        rows = rows.filter((r) => userIds.includes(r.user_id));
+      }
+      return { rows };
+    }
+
+    // Users lookup (for notification delivery)
+    if (lowerSql.includes('select email from users')) {
+      if (lowerSql.includes('any($1)')) {
+        const userIds = Array.isArray(params[0]) ? params[0] : [params[0]];
+        const rows = userIds.map((id) => ({ email: `${id}@dev.local` }));
+        return { rows };
+      }
+      return { rows: [{ email: `${params[0]}@dev.local` }] };
+    }
+
+    if (lowerSql.includes('select id from users where role')) {
+      const roles = params[0];
+      const rows = roles.map((role, i) => ({ id: `${role}-${String(i + 1).padStart(3, '0')}` }));
+      return { rows };
+    }
+
+    // Teams coach_id lookup
+    if (lowerSql.includes('select coach_id from teams where id')) {
+      const team = db.findById('teams', params[0]);
+      return { rows: team ? [{ coach_id: team.coach_id }] : [] };
+    }
+
+    if (lowerSql.includes('select team_id from players where id')) {
+      const player = db.findById('players', params[0]);
+      return { rows: player ? [{ team_id: player.team_id }] : [] };
     }
 
     // Default
