@@ -162,6 +162,7 @@ describe('Matches', () => {
           homeTeamId: teamA.id,
           awayTeamId: teamB.id,
           scheduledAt: '2027-03-01T14:00:00Z',
+          officialId: '00000000-0000-0000-0000-000000000010',
         });
       match = res.body.data;
 
@@ -243,6 +244,7 @@ describe('Matches', () => {
           homeTeamId: teamA.id,
           awayTeamId: teamB.id,
           scheduledAt: '2027-03-02T14:00:00Z',
+          officialId: '00000000-0000-0000-0000-000000000010',
         });
       const match2 = match2Res.body.data;
 

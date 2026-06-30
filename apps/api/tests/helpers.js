@@ -19,7 +19,7 @@ const tokens = {
   registrar: makeToken({ role: 'registrar' }),
   ref_coordinator: makeToken({ role: 'ref_coordinator' }),
   media_officer: makeToken({ role: 'media_officer' }),
-  official: makeToken({ role: 'official' }),
+  official: makeToken({ role: 'official', id: '00000000-0000-0000-0000-000000000010' }),
   coach: makeToken({ role: 'coach', id: 'coach-001' }),
 };
 

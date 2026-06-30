@@ -42,6 +42,7 @@ describe('Match Events', () => {
         homeTeamId: teamA.id,
         awayTeamId: teamB.id,
         scheduledAt: '2027-03-01T14:00:00Z',
+        officialId: '00000000-0000-0000-0000-000000000010',
       });
     match = matchRes.body.data;
 
