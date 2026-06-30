@@ -1,6 +1,10 @@
 packages:
   - "apps/*"
   - "packages/*"
+allowBuilds:
+  esbuild: false
+  protobufjs: false
+  unrs-resolver: false
 overrides:
   "@types/react": "18.3.31"
   "@types/react-dom": "18.3.7"
