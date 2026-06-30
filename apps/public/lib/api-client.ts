@@ -13,7 +13,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
 export const apiClient = {
   async getCompetitions(): Promise<Competition[]> {
-    const res = await fetch(`${API_URL}/api/competitions`, {
+    const res = await fetch(`${API_URL}/api/public/competitions`, {
       next: { revalidate: 300 }, // ISR: revalidate every 5 minutes
     })
     if (!res.ok) throw new Error("Failed to fetch competitions")
@@ -21,7 +21,7 @@ export const apiClient = {
   },
 
   async getCompetition(id: string): Promise<Competition> {
-    const res = await fetch(`${API_URL}/api/competitions/${id}`, {
+    const res = await fetch(`${API_URL}/api/public/competitions/${id}`, {
       next: { revalidate: 300 },
     })
     if (!res.ok) throw new Error("Failed to fetch competition")
@@ -31,7 +31,7 @@ export const apiClient = {
   async getTeams(competitionId?: string): Promise<Team[]> {
     const params = new URLSearchParams()
     if (competitionId) params.append("competitionId", competitionId)
-    const res = await fetch(`${API_URL}/api/teams?${params}`, {
+    const res = await fetch(`${API_URL}/api/public/teams?${params}`, {
       next: { revalidate: 300 },
     })
     if (!res.ok) throw new Error("Failed to fetch teams")
@@ -39,7 +39,7 @@ export const apiClient = {
   },
 
   async getTeam(id: string): Promise<Team> {
-    const res = await fetch(`${API_URL}/api/teams/${id}`, {
+    const res = await fetch(`${API_URL}/api/public/teams/${id}`, {
       next: { revalidate: 300 },
     })
     if (!res.ok) throw new Error("Failed to fetch team")
@@ -49,7 +49,7 @@ export const apiClient = {
   async getPlayers(teamId?: string): Promise<Player[]> {
     const params = new URLSearchParams()
     if (teamId) params.append("teamId", teamId)
-    const res = await fetch(`${API_URL}/api/players?${params}`, {
+    const res = await fetch(`${API_URL}/api/public/players?${params}`, {
       next: { revalidate: 300 },
     })
     if (!res.ok) throw new Error("Failed to fetch players")
@@ -57,7 +57,7 @@ export const apiClient = {
   },
 
   async getPlayer(id: string): Promise<Player> {
-    const res = await fetch(`${API_URL}/api/players/${id}`, {
+    const res = await fetch(`${API_URL}/api/public/players/${id}`, {
       next: { revalidate: 300 },
     })
     if (!res.ok) throw new Error("Failed to fetch player")
@@ -103,7 +103,7 @@ export const apiClient = {
   },
 
   async getOrganizations(): Promise<Organization[]> {
-    const res = await fetch(`${API_URL}/api/organizations`, {
+    const res = await fetch(`${API_URL}/api/public/organizations`, {
       next: { revalidate: 3600 }, // ISR: revalidate every hour
     })
     if (!res.ok) throw new Error("Failed to fetch organizations")
@@ -111,7 +111,7 @@ export const apiClient = {
   },
 
   async getSeasons(): Promise<Season[]> {
-    const res = await fetch(`${API_URL}/api/seasons`, {
+    const res = await fetch(`${API_URL}/api/public/seasons`, {
       next: { revalidate: 3600 },
     })
     if (!res.ok) throw new Error("Failed to fetch seasons")
@@ -131,7 +131,7 @@ export const apiClient = {
     if (filters?.type) params.append("type", filters.type)
     params.append("isApproved", "true")
     const qs = params.toString()
-    const res = await fetch(`${API_URL}/api/media?${qs}`, {
+    const res = await fetch(`${API_URL}/api/public/media?${qs}`, {
       next: { revalidate: 300 },
     })
     if (!res.ok) throw new Error("Failed to fetch media")
