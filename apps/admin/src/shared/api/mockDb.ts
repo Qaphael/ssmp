@@ -842,6 +842,26 @@ export const mockDb = {
     localStorage.setItem(API_URL_KEY, url);
   },
 
+  _cachedToken: '' as string,
+  async getToken(): Promise<string> {
+    if (this._cachedToken) return this._cachedToken;
+    const url = this.getApiUrl();
+    if (!url) return '';
+    try {
+      const res = await fetch(`${url}/api/auth/dev-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'comp_admin' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        this._cachedToken = data.token;
+        return data.token;
+      }
+    } catch { /* ignore */ }
+    return '';
+  },
+
   // Mutators
   saveCompetition(comp: Omit<Competition, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Competition {
     const comps = this.getCompetitions();

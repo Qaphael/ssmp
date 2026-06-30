@@ -36,8 +36,24 @@ interface NewsMediaProps {
   onActionCompleted: () => void;
 }
 
-export default function NewsMedia({ news, media, teams, competitions, matches, onActionCompleted }: NewsMediaProps) {
+async function apiFetch(path: string, options?: RequestInit) {
+  const url = mockDb.getApiUrl();
+  if (!url) return null;
+  const token = await mockDb.getToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...((options?.headers as Record<string, string>) || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${url}${path}`, { ...options, headers });
+  if (!res.ok) return null;
+  if (res.status === 204) return true;
+  const data = await res.json();
+  return data.data ?? data;
+}
+
+export default function NewsMedia({ news: propNews, media, teams, competitions, matches, onActionCompleted }: NewsMediaProps) {
   const [activeSubTab, setActiveSubTab] = useState<'news' | 'media'>('news');
+  const [localNews, setLocalNews] = useState<NewsArticle[]>(propNews);
+
+  React.useEffect(() => { setLocalNews(propNews); }, [propNews]);
 
   // News State
   const [showNewsForm, setShowNewsForm] = useState(false);
@@ -53,18 +69,24 @@ export default function NewsMedia({ news, media, teams, competitions, matches, o
   };
 
   // News Handlers
-  const handleSaveNews = (e: React.FormEvent) => {
+  const handleSaveNews = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newsTitle || !newsContent) return;
 
-    mockDb.saveNews({
-      title: newsTitle,
-      excerpt: newsExcerpt || undefined,
-      content: newsContent,
-      authorId: 'admin-current',
-      isPublished: newsPublish,
-      publishedAt: newsPublish ? new Date().toISOString() : undefined,
+    const result = await apiFetch('/api/news', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: newsTitle,
+        excerpt: newsExcerpt || undefined,
+        content: newsContent,
+        isPublished: newsPublish,
+        publishedAt: newsPublish ? new Date().toISOString() : undefined,
+      }),
     });
+
+    if (result) {
+      setLocalNews((prev) => [result, ...prev]);
+    }
 
     setNewsTitle('');
     setNewsExcerpt('');
@@ -73,23 +95,29 @@ export default function NewsMedia({ news, media, teams, competitions, matches, o
     onActionCompleted();
   };
 
-  const handleDeleteNews = (id: string) => {
-    mockDb.deleteNews(id);
+  const handleDeleteNews = async (id: string) => {
+    await apiFetch(`/api/news/${id}`, { method: 'DELETE' });
+    setLocalNews((prev) => prev.filter((n) => n.id !== id));
     onActionCompleted();
   };
 
-  const handleTogglePublish = (article: NewsArticle) => {
-    mockDb.saveNews({
-      ...article,
-      isPublished: !article.isPublished,
-      publishedAt: !article.isPublished ? new Date().toISOString() : undefined,
+  const handleTogglePublish = async (article: NewsArticle) => {
+    const result = await apiFetch(`/api/news/${article.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        isPublished: !article.isPublished,
+        publishedAt: !article.isPublished ? new Date().toISOString() : null,
+      }),
     });
+    if (result) {
+      setLocalNews((prev) => prev.map((n) => n.id === article.id ? result : n));
+    }
     onActionCompleted();
   };
 
   // Media Handlers
   const handleReviewMedia = (id: string, isApproved: boolean) => {
-    mockDb.reviewMedia(id, isApproved);
+    // Handled by MediaGallery directly via API
     onActionCompleted();
   };
 
@@ -121,7 +149,7 @@ export default function NewsMedia({ news, media, teams, competitions, matches, o
           <span className="flex items-center gap-2">
             <FileText className="h-4 w-4" /> District Press Board
             <span className="px-1.5 py-0.5 text-[9px] font-mono bg-[#121212] text-white font-bold rounded-none">
-              {news.length} ARTICLES
+              {localNews.length} ARTICLES
             </span>
           </span>
         </button>
@@ -242,7 +270,7 @@ export default function NewsMedia({ news, media, teams, competitions, matches, o
             )}
 
             <div className="space-y-6">
-              {news.map((article) => (
+              {localNews.map((article) => (
                 <div
                   key={article.id}
                   className="border border-[#E5E5E1] bg-white p-6 rounded-none relative hover:border-[#121212] transition-all"
