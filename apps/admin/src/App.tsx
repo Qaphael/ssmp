@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Organization, Season, Competition, Team, Player, TeamRegistration, RosterSubmission, Fixture, Pitch, UserRole, Official, TransferRequest, MatchEvent, NewsArticle, Media, Suspension, AuditLog } from '@ssmp/shared-types';
+import { Organization, Season, Competition, Team, Player, TeamRegistration, RosterSubmission, Fixture, Pitch, UserRole, Official, TransferRequest, MatchEvent, NewsArticle, Media, Suspension, AuditLog, Notification } from '@ssmp/shared-types';
 import { mockDb, detectConflicts } from './shared/api/mockDb';
 import Sidebar from './app/layout/Sidebar';
 import Header from './app/layout/Header';
@@ -17,7 +17,7 @@ import AuditLogViewer from './features/audit/AuditLogViewer';
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentRole, setCurrentRole] = useState<UserRole>('comp_admin');
-  const [apiUrl, setApiUrl] = useState('');
+  const [apiUrl, setApiUrl] = useState(import.meta.env.VITE_API_URL || '');
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [pitches, setPitches] = useState<Pitch[]>([]);
@@ -30,42 +30,121 @@ export default function App() {
   const [suspensions, setSuspensions] = useState<Suspension[]>([]);
   const [officials, setOfficials] = useState<Official[]>([]);
   const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [media, setMedia] = useState<Media[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
+  const isDemoMode = !apiUrl;
+
   useEffect(() => {
-    mockDb.seedAuditLogs();
-    mockDb.seedNotifications();
     refreshAllData();
-    setApiUrl(mockDb.getApiUrl());
   }, []);
 
-  const refreshAllData = () => {
-    setSeasons(mockDb.getSeasons());
-    setCompetitions(mockDb.getCompetitions());
+  const refreshAllData = async () => {
+    const url = apiUrl || import.meta.env.VITE_API_URL || '';
+    if (url) {
+      try {
+        const compsRes = await fetch(`${url}/api/public/competitions`);
+        if (compsRes.ok) setCompetitions(await compsRes.json());
+      } catch { /* fall through to demo */ }
+      try {
+        const seasonsRes = await fetch(`${url}/api/public/seasons`);
+        if (seasonsRes.ok) setSeasons(await seasonsRes.json());
+      } catch { /* ignore */ }
+      try {
+        const teamsRes = await fetch(`${url}/api/public/teams`);
+        if (teamsRes.ok) setTeams(await teamsRes.json());
+      } catch { /* ignore */ }
+      try {
+        const playersRes = await fetch(`${url}/api/public/players`);
+        if (playersRes.ok) setPlayers(await playersRes.json());
+      } catch { /* ignore */ }
+      try {
+        const token = await mockDb.getToken();
+        const fixturesRes = await fetch(`${url}/api/fixtures`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (fixturesRes.ok) {
+          const data = await fixturesRes.json();
+          setFixtures(data.data || data);
+        }
+      } catch { /* ignore */ }
+      try {
+        const token = await mockDb.getToken();
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const transfersRes = await fetch(`${url}/api/transfers`, { headers });
+        if (transfersRes.ok) {
+          const data = await transfersRes.json();
+          setTransfers(data.data || data);
+        }
+      } catch { /* ignore */ }
+      try {
+        const token = await mockDb.getToken();
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const suspRes = await fetch(`${url}/api/discipline/suspensions`, { headers });
+        if (suspRes.ok) {
+          const data = await suspRes.json();
+          setSuspensions(data.data || data);
+        }
+      } catch { /* ignore */ }
+      try {
+        const token = await mockDb.getToken();
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const notifRes = await fetch(`${url}/api/notifications`, { headers });
+        if (notifRes.ok) {
+          const data = await notifRes.json();
+          setNotifications(data.data || data);
+        }
+      } catch { /* ignore */ }
+      try {
+        const token = await mockDb.getToken();
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const newsRes = await fetch(`${url}/api/news`, { headers });
+        if (newsRes.ok) {
+          const data = await newsRes.json();
+          setNews(data.data || data);
+        }
+      } catch { /* ignore */ }
+      try {
+        const token = await mockDb.getToken();
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const mediaRes = await fetch(`${url}/api/media`, { headers });
+        if (mediaRes.ok) {
+          const data = await mediaRes.json();
+          setMedia(data.data || data);
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Demo mode fallback: populate from local storage when no API is configured
+    if (!url) {
+      setSeasons(mockDb.getSeasons());
+      setCompetitions(mockDb.getCompetitions());
+      setTeams(mockDb.getTeams());
+      setPlayers(mockDb.getPlayers());
+      setFixtures(mockDb.getFixtures());
+      setTransfers(mockDb.getTransfers());
+      setSuspensions(mockDb.getSuspensions());
+      setOfficials(mockDb.getOfficials());
+      setMatchEvents(mockDb.getEvents());
+      setNotifications(mockDb.getNotifications());
+      setNews(mockDb.getNews());
+      setMedia(mockDb.getMedia());
+    }
+
     setPitches(mockDb.getPitches());
-    setTeams(mockDb.getTeams());
-    setPlayers(mockDb.getPlayers());
     setRegistrations(mockDb.getRegistrations());
     setRosters(mockDb.getRosters());
-    setFixtures(mockDb.getFixtures());
-    setTransfers(mockDb.getTransfers());
-    setSuspensions(mockDb.getSuspensions());
-    setOfficials(mockDb.getOfficials());
-    setMatchEvents(mockDb.getEvents());
-    setNews(mockDb.getNews());
-    setMedia(mockDb.getMedia());
     setAuditLogs(mockDb.getAuditLogs());
   };
 
   const handleSaveApiUrl = (url: string) => {
-    mockDb.setApiUrl(url);
     setApiUrl(url);
   };
 
-  const handleCompetitionCreated = () => {
-    refreshAllData();
+  const handleCompetitionCreated = async () => {
+    await refreshAllData();
   };
 
   const pendingRegCount = registrations.filter((r) => r.status === 'pending').length;
@@ -95,6 +174,21 @@ export default function App() {
           onSaveApiUrl={handleSaveApiUrl}
         />
 
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                Demo Mode — Using local mock data
+              </span>
+            </div>
+            <span className="text-[10px] text-amber-600 font-sans">
+              Configure an API URL in the header to connect to the live server
+            </span>
+          </div>
+        )}
+
         <main className="flex-1 overflow-y-auto px-6 py-8 md:px-8">
           <div className="mx-auto max-w-7xl">
             <AnimatePresence mode="wait">
@@ -117,7 +211,7 @@ export default function App() {
                     officials={officials}
                     suspensions={suspensions}
                     matchEvents={matchEvents}
-                    notifications={mockDb.getNotifications()}
+                    notifications={notifications}
                     clashCount={fixtureClashCount}
                     onNavigate={setActiveTab}
                   />

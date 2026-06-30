@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AuditLog } from '@ssmp/shared-types';
 import { FileText, ChevronDown, ChevronRight, Search, Filter } from 'lucide-react';
+import { mockDb } from '../../shared/api/mockDb';
 
 interface AuditLogViewerProps {
   auditLogs: AuditLog[];
@@ -99,20 +100,41 @@ function ChangesDiff({ oldValue, newValue }: { oldValue?: Record<string, unknown
   );
 }
 
-export default function AuditLogViewer({ auditLogs }: AuditLogViewerProps) {
+export default function AuditLogViewer({ auditLogs: propLogs }: AuditLogViewerProps) {
+  const [localLogs, setLocalLogs] = useState<AuditLog[]>(propLogs);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 20;
 
+  useEffect(() => { setLocalLogs(propLogs); }, [propLogs]);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      const url = mockDb.getApiUrl();
+      if (!url) return;
+      try {
+        const token = await mockDb.getToken();
+        const res = await fetch(`${url}/api/audit-logs`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setLocalLogs(data.data || data);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchLogs();
+  }, []);
+
   const entityTypes = useMemo(() => {
-    const types = new Set(auditLogs.map((l) => l.entityType));
+    const types = new Set(localLogs.map((l) => l.entityType));
     return Array.from(types).sort();
-  }, [auditLogs]);
+  }, [localLogs]);
 
   const filtered = useMemo(() => {
-    let result = auditLogs;
+    let result = localLogs;
     if (entityFilter !== 'all') {
       result = result.filter((l) => l.entityType === entityFilter);
     }
@@ -129,7 +151,7 @@ export default function AuditLogViewer({ auditLogs }: AuditLogViewerProps) {
       );
     }
     return result;
-  }, [auditLogs, entityFilter, searchQuery]);
+  }, [localLogs, entityFilter, searchQuery]);
 
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);

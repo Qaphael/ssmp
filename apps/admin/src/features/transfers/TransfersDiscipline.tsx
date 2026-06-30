@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ArrowRightLeft,
   ShieldAlert,
@@ -29,15 +29,32 @@ interface TransfersDisciplineProps {
   onActionCompleted: () => void;
 }
 
+async function apiFetch(path: string, options?: RequestInit) {
+  const url = mockDb.getApiUrl();
+  if (!url) return null;
+  const token = await mockDb.getToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...((options?.headers as Record<string, string>) || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${url}${path}`, { ...options, headers });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.data ?? data;
+}
+
 export default function TransfersDiscipline({
-  transfers,
-  suspensions,
+  transfers: propTransfers,
+  suspensions: propSuspensions,
   players,
   teams,
   competitions,
   onActionCompleted,
 }: TransfersDisciplineProps) {
   const [activeSubTab, setActiveSubTab] = useState<'transfers' | 'discipline'>('transfers');
+  const [localTransfers, setLocalTransfers] = useState<TransferRequest[]>(propTransfers);
+  const [localSuspensions, setLocalSuspensions] = useState<Suspension[]>(propSuspensions);
+
+  useEffect(() => { setLocalTransfers(propTransfers); }, [propTransfers]);
+  useEffect(() => { setLocalSuspensions(propSuspensions); }, [propSuspensions]);
 
   // Transfer state
   const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
@@ -67,35 +84,46 @@ export default function TransfersDiscipline({
   };
 
   // Handlers
-  const handleApproveTransfer = (id: string) => {
-    mockDb.reviewTransfer(id, 'approved');
+  const handleApproveTransfer = async (id: string) => {
+    await apiFetch(`/api/transfers/${id}/review`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'approved' }),
+    });
+    setLocalTransfers((prev) => prev.map((t) => t.id === id ? { ...t, status: 'approved' as const } : t));
     onActionCompleted();
   };
 
-  const handleRejectTransfer = (id: string) => {
+  const handleRejectTransfer = async (id: string) => {
     const reason = rejectionReasons[id] || 'Does not meet eligibility criteria.';
-    mockDb.reviewTransfer(id, 'rejected', reason);
+    await apiFetch(`/api/transfers/${id}/review`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'rejected', rejectionReason: reason }),
+    });
+    setLocalTransfers((prev) => prev.map((t) => t.id === id ? { ...t, status: 'rejected' as const, rejectionReason: reason } : t));
     onActionCompleted();
-    // Reset local view state
     setShowRejectForm((prev) => ({ ...prev, [id]: false }));
   };
 
-  const handleCreateSuspension = (e: React.FormEvent) => {
+  const handleCreateSuspension = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSuspPlayerId || !newSuspCompId || !newSuspReason) {
       setErrorMsg('Please populate all suspension parameters.');
       return;
     }
 
-    mockDb.saveSuspension({
-      playerId: newSuspPlayerId,
-      competitionId: newSuspCompId,
-      reason: newSuspReason,
-      matchesCount: Number(newSuspCount),
-      matchesServed: 0,
-      isServed: false,
-      startDate: new Date().toISOString().split('T')[0],
+    const result = await apiFetch('/api/discipline/suspensions', {
+      method: 'POST',
+      body: JSON.stringify({
+        playerId: newSuspPlayerId,
+        competitionId: newSuspCompId,
+        reason: newSuspReason,
+        matchesCount: Number(newSuspCount),
+      }),
     });
+
+    if (result) {
+      setLocalSuspensions((prev) => [result, ...prev]);
+    }
 
     setNewSuspPlayerId('');
     setNewSuspReason('');
@@ -106,13 +134,14 @@ export default function TransfersDiscipline({
     onActionCompleted();
   };
 
-  const handleDeleteSuspension = (id: string) => {
-    mockDb.deleteSuspension(id);
+  const handleDeleteSuspension = async (id: string) => {
+    await apiFetch(`/api/discipline/suspensions/${id}`, { method: 'DELETE' });
+    setLocalSuspensions((prev) => prev.filter((s) => s.id !== id));
     onActionCompleted();
   };
 
-  const pendingTransfers = transfers.filter((t) => t.status === 'pending');
-  const pastTransfers = transfers.filter((t) => t.status !== 'pending');
+  const pendingTransfers = localTransfers.filter((t) => t.status === 'pending');
+  const pastTransfers = localTransfers.filter((t) => t.status !== 'pending');
 
   return (
     <div className="space-y-6 font-sans">
@@ -155,9 +184,9 @@ export default function TransfersDiscipline({
         >
           <span className="flex items-center gap-2">
             <ShieldAlert className="h-4 w-4" /> Suspensions Registry
-            {suspensions.filter((s) => !s.isServed).length > 0 && (
+            {localSuspensions.filter((s) => !s.isServed).length > 0 && (
               <span className="px-1.5 py-0.5 text-[9px] font-mono bg-[#121212] text-white font-bold rounded-none">
-                {suspensions.filter((s) => !s.isServed).length} ACTIVE
+                {localSuspensions.filter((s) => !s.isServed).length} ACTIVE
               </span>
             )}
           </span>
@@ -383,14 +412,14 @@ export default function TransfersDiscipline({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E5E1] text-xs">
-                    {suspensions.length === 0 ? (
+                    {localSuspensions.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="py-12 text-center text-slate-400 italic font-serif bg-white">
                           No active athletic suspensions logged. Perfect compliance standard!
                         </td>
                       </tr>
                     ) : (
-                      suspensions.map((s) => {
+                      localSuspensions.map((s) => {
                         const p = players.find((pl) => pl.id === s.playerId);
                         const t = p ? teams.find((tm) => tm.id === p.teamId) : null;
                         return (

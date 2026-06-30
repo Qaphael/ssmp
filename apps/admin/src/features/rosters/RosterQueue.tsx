@@ -22,6 +22,8 @@ import {
 import { RosterSubmission, Team, Player, Competition } from '@ssmp/shared-types';
 import { mockDb } from '../../shared/api/mockDb';
 
+const getApiUrl = () => mockDb.getApiUrl();
+
 interface RosterQueueProps {
   rosters: RosterSubmission[];
   teams: Team[];
@@ -78,7 +80,17 @@ export default function RosterQueue({
     return matchesSearch && matchesComp && matchesStatus;
   });
 
-  const handleApprove = (id: string) => {
+  const handleApprove = async (id: string) => {
+    const ros = rosters.find((r) => r.id === id);
+    if (!ros) return;
+    const url = getApiUrl();
+    if (url) {
+      await fetch(`${url}/api/teams/${ros.teamId}/roster-approval`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'approved' }),
+      }).catch(() => {});
+    }
     mockDb.reviewRoster(id, 'approved');
     setActiveRosterId(null);
     onReviewCompleted();
@@ -89,13 +101,24 @@ export default function RosterQueue({
     setRejectionReason('');
   };
 
-  const handleConfirmReject = (e: React.FormEvent) => {
+  const handleConfirmReject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rejectionReason.trim()) {
       alert('Please specify a rejection reason.');
       return;
     }
     if (rejectingRosterId) {
+      const ros = rosters.find((r) => r.id === rejectingRosterId);
+      if (ros) {
+        const url = getApiUrl();
+        if (url) {
+          await fetch(`${url}/api/teams/${ros.teamId}/roster-approval`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'rejected', rejectionReason: rejectionReason.trim() }),
+          }).catch(() => {});
+        }
+      }
       mockDb.reviewRoster(rejectingRosterId, 'rejected', rejectionReason);
       setRejectingRosterId(null);
       setActiveRosterId(null);
@@ -103,7 +126,7 @@ export default function RosterQueue({
     }
   };
 
-  const handleAddPlayer = (e: React.FormEvent) => {
+  const handleAddPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     const teamId = showAddPlayerModal;
     if (!teamId || !newPlayerFirst.trim() || !newPlayerLast.trim()) {
@@ -111,30 +134,44 @@ export default function RosterQueue({
       return;
     }
 
-    // Add Player to Db
-    const addedPlayer = mockDb.addSamplePlayer({
-      teamId,
-      firstName: newPlayerFirst.trim(),
-      lastName: newPlayerLast.trim(),
-      jerseyNumber: newPlayerJersey,
-      position: newPlayerPos,
-      dateOfBirth: newPlayerDOB,
-      nationality: newPlayerNat,
-      status: 'active',
+    const url = getApiUrl();
+    if (!url) {
+      alert('Please set the API URL in the header.');
+      return;
+    }
+
+    const res = await fetch(`${url}/api/players`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teamId,
+        firstName: newPlayerFirst.trim(),
+        lastName: newPlayerLast.trim(),
+        jerseyNumber: newPlayerJersey,
+        position: newPlayerPos,
+        dateOfBirth: newPlayerDOB,
+        nationality: newPlayerNat,
+      }),
     });
 
-    // Update the roster submission playerIds array
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+      alert(`Failed to add player: ${err.error || res.statusText}`);
+      return;
+    }
+
+    const addedPlayer = await res.json();
+
+    // Update local mockDb roster with new player ID
     const allRosters = mockDb.getRosters();
     const targetRoster = allRosters.find((r) => r.teamId === teamId);
     if (targetRoster) {
       if (!targetRoster.playerIds.includes(addedPlayer.id)) {
         targetRoster.playerIds.push(addedPlayer.id);
-        // Put back in draft or submitted
         targetRoster.status = 'submitted';
         localStorage.setItem('sm_rosters', JSON.stringify(allRosters));
       }
     } else {
-      // Create new roster submission
       const activeTeam = teams.find((t) => t.id === teamId);
       if (activeTeam) {
         const newSubmission: RosterSubmission = {
@@ -152,15 +189,6 @@ export default function RosterQueue({
       }
     }
 
-    // Update Team Roster Status to submitted
-    const allTeams = mockDb.getTeams();
-    const tIdx = allTeams.findIndex((t) => t.id === teamId);
-    if (tIdx !== -1) {
-      allTeams[tIdx].rosterApprovalStatus = 'submitted';
-      localStorage.setItem('sm_teams', JSON.stringify(allTeams));
-    }
-
-    // Clean states
     setNewPlayerFirst('');
     setNewPlayerLast('');
     setNewPlayerJersey(10);
@@ -176,9 +204,24 @@ export default function RosterQueue({
     setInjuryMedicalNotes('');
   };
 
-  const handleConfirmInjury = (e: React.FormEvent) => {
+  const handleConfirmInjury = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!injuryPlayerId || !injuryDescription.trim() || !injuryReturnDate) return;
+
+    const url = getApiUrl();
+    if (url) {
+      await fetch(`${url}/api/players/${injuryPlayerId}/injury`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          injuryDetails: {
+            description: injuryDescription.trim(),
+            expectedReturnDate: injuryReturnDate,
+            medicalNotes: injuryMedicalNotes.trim() || undefined,
+          },
+        }),
+      }).catch(() => {});
+    }
 
     mockDb.updatePlayer(injuryPlayerId, {
       status: 'injured',
@@ -193,7 +236,13 @@ export default function RosterQueue({
     onReviewCompleted();
   };
 
-  const handleClearInjury = (playerId: string) => {
+  const handleClearInjury = async (playerId: string) => {
+    const url = getApiUrl();
+    if (url) {
+      await fetch(`${url}/api/players/${playerId}/injury`, {
+        method: 'DELETE',
+      }).catch(() => {});
+    }
     mockDb.updatePlayer(playerId, {
       status: 'active',
       injuryDetails: undefined,

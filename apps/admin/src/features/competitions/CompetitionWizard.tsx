@@ -93,7 +93,7 @@ export default function CompetitionWizard({ seasons, onCompetitionCreated }: Com
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const rules: CompetitionRules = {
@@ -111,21 +111,37 @@ export default function CompetitionWizard({ seasons, onCompetitionCreated }: Com
       walkoverDefaultScoreAway: 0,
     };
 
-    const newComp = mockDb.saveCompetition({
-      seasonId,
-      name,
-      sport,
-      division,
-      status: 'setup',
-      rules,
-      registrationWindow: {
-        opensAt: new Date(opensAt).toISOString(),
-        closesAt: new Date(closesAt).toISOString(),
-      },
-      enableGroups,
-      enableKnockouts,
+    const apiUrl = mockDb.getApiUrl();
+    if (!apiUrl) {
+      alert('Please set the API URL in the header before creating a competition.');
+      return;
+    }
+
+    const res = await fetch(`${apiUrl}/api/competitions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        seasonId,
+        name,
+        sport,
+        division,
+        rules,
+        registrationWindow: {
+          opensAt: new Date(opensAt).toISOString(),
+          closesAt: new Date(closesAt).toISOString(),
+        },
+        enableGroups,
+        enableKnockouts,
+      }),
     });
 
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+      alert(`Failed to create competition: ${err.error || res.statusText}`);
+      return;
+    }
+
+    const newComp = await res.json();
     setCreatedComp(newComp);
     setWizardSuccess(true);
     onCompetitionCreated(newComp);

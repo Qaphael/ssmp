@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Shield, Settings, Server, Check, UserCircle } from 'lucide-react';
+import { Shield, Server, UserCircle } from 'lucide-react';
 import { UserRole } from '@ssmp/shared-types';
 
 interface HeaderProps {
@@ -14,11 +14,7 @@ interface HeaderProps {
   onSaveApiUrl: (url: string) => void;
 }
 
-export default function Header({ currentRole, onChangeRole, apiUrl, onSaveApiUrl }: HeaderProps) {
-  const [showConfig, setShowConfig] = useState(false);
-  const [tempUrl, setTempUrl] = useState(apiUrl);
-  const [savedMessage, setSavedMessage] = useState(false);
-
+export default function Header({ currentRole, onChangeRole, apiUrl }: HeaderProps) {
   const rolesList: { value: UserRole; label: string }[] = [
     { value: 'comp_admin', label: 'Competition Admin' },
     { value: 'system_admin', label: 'System Admin' },
@@ -27,13 +23,6 @@ export default function Header({ currentRole, onChangeRole, apiUrl, onSaveApiUrl
     { value: 'official', label: 'Official' },
     { value: 'coach', label: 'Coach' },
   ];
-
-  const handleSaveUrl = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSaveApiUrl(tempUrl);
-    setSavedMessage(true);
-    setTimeout(() => setSavedMessage(false), 2500);
-  };
 
   return (
     <header className="sticky top-0 z-40 flex h-20 w-full items-center justify-between border-b border-[#E5E5E1] bg-[#FBFBF9] px-6 md:px-10">
@@ -44,70 +33,12 @@ export default function Header({ currentRole, onChangeRole, apiUrl, onSaveApiUrl
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Connection status or configuration */}
-        <div className="relative">
-          <button
-            onClick={() => setShowConfig(!showConfig)}
-            className="flex items-center gap-1.5 rounded-none border border-[#121212] bg-white px-3 py-2 text-[10px] uppercase font-bold tracking-widest text-[#121212] transition hover:bg-[#121212] hover:text-white"
-            id="api-config-toggle"
-          >
-            <Server className="h-3.5 w-3.5 text-[#121212] group-hover:text-white" />
-            <span className="hidden sm:inline">
-              {apiUrl ? 'API: Connected' : 'Mock REST Active'}
-            </span>
-            <span className="sm:hidden">API</span>
-          </button>
-
-          {showConfig && (
-            <div className="absolute right-0 mt-2 w-80 rounded-none border border-[#E5E5E1] bg-white p-5 shadow-lg z-50">
-              <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#121212]">
-                <Settings className="h-4 w-4 text-[#8b8b85]" />
-                REST API Integration
-              </h4>
-              <p className="mt-2 text-xs text-slate-500 leading-relaxed font-sans">
-                Connect the administration panel to your live server. Leave empty to use local storage.
-              </p>
-              <form onSubmit={handleSaveUrl} className="mt-4">
-                <div className="space-y-2">
-                  <label htmlFor="api-url-input" className="block text-[9px] font-bold uppercase tracking-wider text-[#8b8b85]">
-                    Target API URL
-                  </label>
-                  <input
-                    id="api-url-input"
-                    type="url"
-                    value={tempUrl}
-                    onChange={(e) => setTempUrl(e.target.value)}
-                    placeholder="https://api.competitionplatform.com/v1"
-                    className="w-full rounded-none border border-[#E5E5E1] px-3 py-2 text-xs focus:border-[#121212] focus:outline-hidden"
-                  />
-                </div>
-                <div className="mt-5 flex items-center justify-between">
-                  {savedMessage ? (
-                    <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 font-sans">
-                      <Check className="h-3 w-3" /> Config saved!
-                    </span>
-                  ) : (
-                    <span />
-                  )}
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowConfig(false)}
-                      className="px-2.5 py-1.5 text-xs font-bold uppercase tracking-widest text-[#8b8b85] hover:text-[#121212]"
-                    >
-                      Close
-                    </button>
-                    <button
-                      type="submit"
-                      className="bg-[#121212] text-white px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:bg-[#D43D2A]"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          )}
+        {/* Connection status */}
+        <div className="flex items-center gap-1.5 px-3 py-2 border border-[#E5E5E1] bg-white">
+          <Server className="h-3.5 w-3.5" />
+          <span className={`text-[10px] uppercase font-bold tracking-widest ${apiUrl ? 'text-emerald-700' : 'text-amber-700'}`}>
+            {apiUrl ? 'Live API' : 'Demo Mode'}
+          </span>
         </div>
 
         {/* Role Simulator Selector */}

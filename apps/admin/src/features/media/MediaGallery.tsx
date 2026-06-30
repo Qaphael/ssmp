@@ -82,26 +82,35 @@ export default function MediaGallery({
     return result;
   }, [media, filterType, filterComp, filterStatus, searchQuery]);
 
-  const handleUpload = (e: React.FormEvent) => {
+  const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadUrl) return;
 
-    mockDb.addMedia({
-      id: `med-${Date.now()}`,
-      uploadedBy: 'comp_admin-001',
-      type: uploadType,
-      url: uploadUrl,
-      filename: uploadUrl.split('/').pop() || 'uploaded-file',
-      fileSize: 0,
-      mimeType: uploadType === 'photo' ? 'image/jpeg' : uploadType === 'video' ? 'video/mp4' : 'application/pdf',
-      caption: uploadCaption || undefined,
-      competitionId: uploadCompId || undefined,
-      matchId: uploadMatchId || undefined,
-      teamId: uploadTeamId || undefined,
-      isApproved: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    const url = mockDb.getApiUrl();
+    if (url) {
+      const token = await mockDb.getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(`${url}/api/media`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          type: uploadType,
+          url: uploadUrl,
+          filename: uploadUrl.split('/').pop() || 'uploaded-file',
+          fileSize: 0,
+          mimeType: uploadType === 'photo' ? 'image/jpeg' : uploadType === 'video' ? 'video/mp4' : 'application/pdf',
+          caption: uploadCaption || undefined,
+          competitionId: uploadCompId || undefined,
+          matchId: uploadMatchId || undefined,
+          teamId: uploadTeamId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        alert('Failed to upload media');
+        return;
+      }
+    }
 
     setUploadUrl('');
     setUploadCaption('');
@@ -112,13 +121,27 @@ export default function MediaGallery({
     onActionCompleted();
   };
 
-  const handleApprove = (id: string) => {
-    mockDb.reviewMedia(id, true);
+  const handleApprove = async (id: string) => {
+    const url = mockDb.getApiUrl();
+    if (url) {
+      const token = await mockDb.getToken();
+      await fetch(`${url}/api/media/${id}/approve`, {
+        method: 'PATCH',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }).catch(() => {});
+    }
     onActionCompleted();
   };
 
-  const handleReject = (id: string) => {
-    mockDb.reviewMedia(id, false);
+  const handleReject = async (id: string) => {
+    const url = mockDb.getApiUrl();
+    if (url) {
+      const token = await mockDb.getToken();
+      await fetch(`${url}/api/media/${id}/reject`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }).catch(() => {});
+    }
     onActionCompleted();
     if (selectedMedia?.id === id) setSelectedMedia(null);
   };

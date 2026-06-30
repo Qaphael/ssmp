@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Calendar,
   AlertTriangle,
@@ -20,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { Fixture, Team, Pitch, Competition } from '@ssmp/shared-types';
-import { mockDb, detectConflicts, ConflictWarning } from '../../shared/api/mockDb';
+import { mockDb, ConflictWarning } from '../../shared/api/mockDb';
 
 interface FixtureListProps {
   fixtures: Fixture[];
@@ -46,6 +46,7 @@ export default function FixtureList({
   // Modal control
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingFixture, setEditingFixture] = useState<Fixture | null>(null);
+  const [conflicts, setConflicts] = useState<ConflictWarning[]>([]);
 
   // Form states
   const [formCompId, setFormCompId] = useState(competitions[0]?.id || 'comp-u17-football');
@@ -106,8 +107,41 @@ export default function FixtureList({
     return matchesComp && matchesMatchday && matchesSearch && matchesDateFilter;
   });
 
-  // Conflicts calculation
-  const conflicts = detectConflicts(fixtures, competitions);
+  // Fetch conflicts from API
+  const fetchConflicts = useCallback(async (compId: string) => {
+    const url = mockDb.getApiUrl();
+    if (!url || compId === 'all') {
+      setConflicts([]);
+      return;
+    }
+    try {
+      const token = await mockDb.getToken();
+      const res = await fetch(`${url}/api/fixtures/conflicts/${compId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const raw = data.data || data;
+        // Normalize API conflict shape to ConflictWarning[]
+        const normalized: ConflictWarning[] = [];
+        for (const c of raw) {
+          if (c.fixture1) {
+            normalized.push({
+              fixtureId: c.fixture1.id,
+              type: c.type === 'pitch_clash' ? 'pitch_clash' : 'team_double_booking',
+              message: c.reason || c.type,
+              conflictingFixtureIds: c.fixture2 ? [c.fixture2.id] : [],
+            });
+          }
+        }
+        setConflicts(normalized);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    fetchConflicts(selectedComp);
+  }, [selectedComp, fixtures, fetchConflicts]);
 
   // Initialize add form
   const openAddModal = () => {
@@ -143,14 +177,21 @@ export default function FixtureList({
     setShowAddModal(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this fixture?')) {
-      mockDb.deleteFixture(id);
-      onFixtureChanged();
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this fixture?')) return;
+    const url = mockDb.getApiUrl();
+    if (url) {
+      const token = await mockDb.getToken();
+      await fetch(`${url}/api/fixtures/${id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }).catch(() => {});
     }
+    mockDb.deleteFixture(id);
+    onFixtureChanged();
   };
 
-  const handleSaveFixture = (e: React.FormEvent) => {
+  const handleSaveFixture = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (formHomeTeam === formAwayTeam) {
@@ -158,14 +199,40 @@ export default function FixtureList({
       return;
     }
 
-    mockDb.saveFixture({
-      id: editingFixture?.id,
+    const payload = {
       competitionId: formCompId,
       matchday: formMatchday,
       homeTeamId: formHomeTeam,
       awayTeamId: formAwayTeam,
       scheduledAt: new Date(formScheduledAt).toISOString(),
-      pitchId: formPitchId,
+      pitchId: formPitchId || undefined,
+    };
+
+    const url = mockDb.getApiUrl();
+    if (url) {
+      const token = await mockDb.getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      if (editingFixture) {
+        await fetch(`${url}/api/fixtures/${editingFixture.id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify(payload),
+        }).catch(() => {});
+      } else {
+        await fetch(`${url}/api/fixtures`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ ...payload, status: 'scheduled' }),
+        }).catch(() => {});
+      }
+    }
+
+    // Also update local mockDb
+    mockDb.saveFixture({
+      id: editingFixture?.id,
+      ...payload,
       status: 'scheduled',
     });
 
@@ -175,37 +242,45 @@ export default function FixtureList({
 
   // Automated Quick Fix Resolution Engine for overlaps!
   // Shifting clashing slots sequentially clears conflicts automatically.
-  const handleAutoResolveConflicts = () => {
+  const handleAutoResolveConflicts = async () => {
     if (conflicts.length === 0) return;
+
+    const url = mockDb.getApiUrl();
+    const token = url ? await mockDb.getToken() : '';
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
 
     let modified = false;
     const currentFixtures = [...fixtures];
 
-    // Find overlapping items
-    conflicts.forEach((conflict) => {
+    conflicts.forEach(async (conflict) => {
       const fix = currentFixtures.find((f) => f.id === conflict.fixtureId);
       if (!fix) return;
 
+      let newTime: string;
       if (conflict.type === 'pitch_clash') {
-        // Resolve Pitch Clash by shifting the clashing match slot to a later slot
-        // Let's add 2 hours (120 min) to avoid overlaps
-        const originalTime = new Date(fix.scheduledAt).getTime();
-        const resolvedTime = new Date(originalTime + 120 * 60 * 1000); // Shift forward by 2 hours
-        fix.scheduledAt = resolvedTime.toISOString();
-        mockDb.saveFixture(fix);
-        modified = true;
-      } else if (conflict.type === 'team_double_booking') {
-        // Resolve double booking by shifting date forward by 1 day
-        const originalTime = new Date(fix.scheduledAt).getTime();
-        const resolvedTime = new Date(originalTime + 24 * 60 * 60 * 1000); // shift forward 1 day
-        fix.scheduledAt = resolvedTime.toISOString();
-        mockDb.saveFixture(fix);
-        modified = true;
+        const resolvedTime = new Date(new Date(fix.scheduledAt).getTime() + 120 * 60 * 1000);
+        newTime = resolvedTime.toISOString();
+      } else {
+        const resolvedTime = new Date(new Date(fix.scheduledAt).getTime() + 24 * 60 * 60 * 1000);
+        newTime = resolvedTime.toISOString();
+      }
+
+      fix.scheduledAt = newTime;
+      mockDb.saveFixture(fix);
+      modified = true;
+
+      if (url) {
+        await fetch(`${url}/api/fixtures/${fix.id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ scheduledAt: newTime }),
+        }).catch(() => {});
       }
     });
 
     if (modified) {
-      alert('⚡ Magic Clash Resolver applied! Overlapping schedules have been shifted to subsequent available slots.');
+      alert('Magic Clash Resolver applied! Overlapping schedules have been shifted to subsequent available slots.');
       onFixtureChanged();
     }
   };
