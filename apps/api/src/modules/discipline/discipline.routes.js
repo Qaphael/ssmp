@@ -40,4 +40,30 @@ router.get('/competitions/:competitionId/suspended-players', auth, rbac('match:r
   } catch (err) { next(err); }
 });
 
+router.get('/suspensions', auth, rbac('match:read'), async (req, res, next) => {
+  try {
+    const suspensions = await disciplineService.listAllSuspensions();
+    res.json({ success: true, data: suspensions });
+  } catch (err) { next(err); }
+});
+
+router.post('/suspensions', auth, rbac('match:read'), async (req, res, next) => {
+  try {
+    const { playerId, competitionId, reason, matchesCount } = req.body;
+    if (!playerId || !competitionId || !reason || !matchesCount) {
+      return res.status(400).json({ error: 'playerId, competitionId, reason, and matchesCount are required' });
+    }
+    const suspension = await disciplineService.createSuspension(playerId, competitionId, reason, Number(matchesCount));
+    res.status(201).json({ success: true, data: suspension });
+  } catch (err) { next(err); }
+});
+
+router.delete('/suspensions/:id', auth, rbac('match:read'), async (req, res, next) => {
+  try {
+    const deleted = await disciplineService.deleteSuspension(req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'Suspension not found' });
+    res.json({ success: true, data: deleted });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

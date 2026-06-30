@@ -35,7 +35,7 @@ class TeamController {
   async update(req, res, next) {
     try {
       const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
-      const team = await teamService.update(req.params.id, req.body, auditCtx);
+      const team = await teamService.update(req.params.id, req.body, req.user.id, req.user.role, auditCtx);
       if (!team) {
         return res.status(404).json({ error: 'Team not found' });
       }

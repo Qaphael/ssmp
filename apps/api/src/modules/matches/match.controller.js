@@ -27,10 +27,13 @@ class MatchController {
   async updateStatus(req, res, next) {
     try {
       const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
-      const match = await matchService.updateStatus(req.params.id, req.body.status, req.user.id, auditCtx);
+      const match = await matchService.updateStatus(req.params.id, req.body.status, req.user.id, req.user.role, auditCtx);
       if (!match) return res.status(404).json({ error: 'Match not found' });
       res.json({ success: true, data: match });
     } catch (err) {
+      if (err.status) {
+        return res.status(err.status).json({ error: err.message });
+      }
       if (err.message.includes('Invalid status transition')) {
         return res.status(422).json({ error: err.message });
       }
@@ -50,10 +53,13 @@ class MatchController {
   async submitReport(req, res, next) {
     try {
       const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
-      const match = await matchService.submitReport(req.params.id, req.body, auditCtx);
+      const match = await matchService.submitReport(req.params.id, req.body, req.user.id, req.user.role, auditCtx);
       if (!match) return res.status(404).json({ error: 'Match not found' });
       res.json({ success: true, data: match });
     } catch (err) {
+      if (err.status) {
+        return res.status(err.status).json({ error: err.message });
+      }
       if (err.message.includes('Match must be')) {
         return res.status(422).json({ error: err.message });
       }

@@ -144,9 +144,15 @@ class MatchService {
     return result.rows[0];
   }
 
-  async updateStatus(id, newStatus, userId, auditCtx) {
+  async updateStatus(id, newStatus, userId, userRole, auditCtx) {
     const match = await this.getById(id);
     if (!match) return null;
+
+    if (userRole === 'official') {
+      if (match.official_id !== userId) {
+        throw Object.assign(new Error('Not authorized to update this match'), { status: 403 });
+      }
+    }
 
     const allowed = VALID_TRANSITIONS[match.status];
     if (!allowed || !allowed.includes(newStatus)) {
@@ -238,9 +244,15 @@ class MatchService {
     return result.rows[0] || null;
   }
 
-  async submitReport(id, reportData, auditCtx) {
+  async submitReport(id, reportData, userId, userRole, auditCtx) {
     const match = await this.getById(id);
     if (!match) return null;
+
+    if (userRole === 'official') {
+      if (match.official_id !== userId) {
+        throw Object.assign(new Error('Not authorized to submit report for this match'), { status: 403 });
+      }
+    }
 
     if (match.status !== 'full_time') {
       throw new Error(`Match must be full_time to submit report. Current status: ${match.status}`);

@@ -102,8 +102,17 @@ class TeamService {
     return result.rows[0];
   }
 
-  async update(id, data, auditCtx) {
+  async update(id, data, userId, userRole, auditCtx) {
     const old = auditCtx ? await this.getById(id) : null;
+
+    if (userRole === 'coach') {
+      const existing = await this.getById(id);
+      if (!existing) return null;
+      if (existing.coach_id !== userId) {
+        throw Object.assign(new Error('Not authorized to edit this team'), { status: 403 });
+      }
+    }
+
     const fields = [];
     const values = [];
     let paramIndex = 1;

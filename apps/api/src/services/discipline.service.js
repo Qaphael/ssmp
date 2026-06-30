@@ -197,6 +197,25 @@ class DisciplineService {
     return result.rows.map((r) => r.player_id);
   }
 
+  async listAllSuspensions() {
+    const result = await pool.query(
+      `SELECT s.*, p.first_name, p.last_name, p.jersey_number, t.name as team_name
+       FROM suspensions s
+       JOIN players p ON p.id = s.player_id
+       JOIN teams t ON t.id = p.team_id
+       ORDER BY s.created_at DESC`
+    );
+    return result.rows;
+  }
+
+  async deleteSuspension(suspensionId) {
+    const result = await pool.query(
+      `DELETE FROM suspensions WHERE id = $1 RETURNING *`,
+      [suspensionId]
+    );
+    return result.rows[0] || null;
+  }
+
   async getPlayerCardCount(playerId, competitionId) {
     const result = await pool.query(
       `SELECT

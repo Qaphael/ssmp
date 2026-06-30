@@ -4,11 +4,18 @@ const disciplineService = require('../../services/discipline.service');
 const { createAuditLog } = require('../../middleware/audit');
 
 class MatchEventService {
-  async create(matchId, data, recordedBy, auditCtx) {
+  async create(matchId, data, recordedBy, userRole, auditCtx) {
     const matchResult = await pool.query(
-      `SELECT competition_id FROM matches WHERE id = $1`, [matchId]
+      `SELECT competition_id, official_id FROM matches WHERE id = $1`, [matchId]
     );
-    const competitionId = matchResult.rows[0]?.competition_id;
+    const match = matchResult.rows[0];
+    const competitionId = match?.competition_id;
+
+    if (userRole === 'official') {
+      if (match?.official_id !== recordedBy) {
+        throw Object.assign(new Error('Not authorized to record events for this match'), { status: 403 });
+      }
+    }
 
     const result = await pool.query(
       `INSERT INTO match_events (match_id, type, minute, player_id, team_id, description, recorded_by)
