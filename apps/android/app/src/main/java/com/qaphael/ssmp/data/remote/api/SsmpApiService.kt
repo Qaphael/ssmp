@@ -45,11 +45,14 @@ interface SsmpApiService {
     suspend fun getFixtures(): List<FixtureDto>
 
     // Lineups
-    @GET("api/matches/{matchId}/events")
-    suspend fun getLineups(@Path("matchId") matchId: String): List<LineupDto>
+    @GET("api/matches/{matchId}/lineup")
+    suspend fun getLineup(@Path("matchId") matchId: String): LineupResponse
 
-    @POST("api/matches/{matchId}/events")
-    suspend fun submitLineup(@Path("matchId") matchId: String, @Body request: CreateLineupRequest): LineupDto
+    @POST("api/matches/{matchId}/lineup")
+    suspend fun submitLineup(@Path("matchId") matchId: String, @Body request: SubmitLineupRequest): LineupResponse
+
+    @POST("api/matches/{matchId}/lineup/lock")
+    suspend fun lockLineup(@Path("matchId") matchId: String): LineupResponse
 
     // Match Events
     @GET("api/matches/{matchId}/events")

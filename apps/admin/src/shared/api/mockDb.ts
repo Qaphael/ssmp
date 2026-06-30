@@ -17,7 +17,7 @@ import {
   Official,
   TransferRequest,
   MatchEvent,
-  Lineup,
+  LineupEntry,
   Card,
   Suspension,
   Media,
@@ -629,7 +629,7 @@ const initialTransfers: TransferRequest[] = [
 ];
 
 const initialEvents: MatchEvent[] = [];
-const initialLineups: Lineup[] = [];
+const initialLineups: LineupEntry[] = [];
 const initialCards: Card[] = [];
 
 const initialSuspensions: Suspension[] = [
@@ -1105,18 +1105,20 @@ export const mockDb = {
   },
 
   // Lineups
-  getLineups(): Lineup[] {
-    return getStored(LINEUPS_KEY, initialLineups);
+  getLineups(matchId?: string): LineupEntry[] {
+    const all = getStored(LINEUPS_KEY, initialLineups);
+    if (matchId) return all.filter((l) => l.matchId === matchId);
+    return all;
   },
 
-  saveLineup(lineup: Omit<Lineup, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Lineup {
+  saveLineup(entry: Omit<LineupEntry, 'id' | 'createdAt'> & { id?: string }): LineupEntry {
     const lineups = this.getLineups();
     const now = new Date().toISOString();
 
-    if (lineup.id) {
-      const idx = lineups.findIndex((l) => l.id === lineup.id);
+    if (entry.id) {
+      const idx = lineups.findIndex((l) => l.id === entry.id);
       if (idx !== -1) {
-        const updated = { ...lineups[idx], ...lineup, updatedAt: now } as Lineup;
+        const updated = { ...lineups[idx], ...entry } as LineupEntry;
         lineups[idx] = updated;
         setStored(LINEUPS_KEY, lineups);
         return updated;
@@ -1124,11 +1126,10 @@ export const mockDb = {
     }
 
     const newL = {
-      ...lineup,
+      ...entry,
       id: generateId('lin'),
       createdAt: now,
-      updatedAt: now,
-    } as Lineup;
+    } as LineupEntry;
     lineups.push(newL);
     setStored(LINEUPS_KEY, lineups);
     return newL;

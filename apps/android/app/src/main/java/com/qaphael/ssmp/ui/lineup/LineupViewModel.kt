@@ -26,8 +26,8 @@ class LineupViewModel @Inject constructor(
     private val _selectedMatchId = MutableStateFlow<String?>(null)
     val selectedMatchId: StateFlow<String?> = _selectedMatchId.asStateFlow()
 
-    private val _currentLineup = MutableStateFlow<LineupEntity?>(null)
-    val currentLineup: StateFlow<LineupEntity?> = _currentLineup.asStateFlow()
+    private val _currentLineup = MutableStateFlow<List<LineupEntity>>(emptyList())
+    val currentLineup: StateFlow<List<LineupEntity>> = _currentLineup.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -47,7 +47,7 @@ class LineupViewModel @Inject constructor(
                 _isLoading.value = false
             }
         } else {
-            _currentLineup.value = null
+            _currentLineup.value = emptyList()
         }
     }
 
@@ -55,8 +55,10 @@ class LineupViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             val result = repository.submitLineup(matchId, teamId, playerIds, submittedBy)
-            result.onSuccess {
-                _currentLineup.value = LineupEntity(matchId, teamId, playerIds, true, false)
+            result.onSuccess { response ->
+                _currentLineup.value = response.entries.map {
+                    LineupEntity(it.id, matchId, it.teamId, it.playerId, it.isStarting, it.playerName, it.jerseyNumber, response.isLocked)
+                }
                 _successMessage.value = "Lineup submitted"
                 _errorMessage.value = null
             }.onFailure {

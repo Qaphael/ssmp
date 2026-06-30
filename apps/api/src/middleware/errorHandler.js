@@ -11,6 +11,10 @@ function errorHandler(err, req, res, _next) {
     return res.status(503).json({ error: 'Database unavailable' });
   }
 
+  if (err.status) {
+    return res.status(err.status).json({ error: err.message });
+  }
+
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
 }

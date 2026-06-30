@@ -940,7 +940,7 @@ components:
         - minute
         - recordedBy
         - createdAt
-    Lineup:
+    LineupEntry:
       type: object
       properties:
         id:
@@ -952,37 +952,68 @@ components:
         teamId:
           type: string
           format: uuid
-        playerIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-          minItems: 1
-          maxItems: 20
-        isStarting:
-          type: boolean
-          default: true
-        isLocked:
-          type: boolean
-          default: false
-        submittedBy:
+        playerId:
           type: string
           format: uuid
-        submittedAt:
+        isStarting:
+          type: boolean
+        playerName:
           type: string
+        jerseyNumber:
+          type: integer
         createdAt:
-          type: string
-        updatedAt:
           type: string
       required:
         - id
         - matchId
         - teamId
-        - playerIds
-        - submittedBy
-        - submittedAt
+        - playerId
+        - isStarting
         - createdAt
-        - updatedAt
+    LineupResponse:
+      type: object
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        isLocked:
+          type: boolean
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              matchId:
+                type: string
+                format: uuid
+              teamId:
+                type: string
+                format: uuid
+              playerId:
+                type: string
+                format: uuid
+              isStarting:
+                type: boolean
+              playerName:
+                type: string
+              jerseyNumber:
+                type: integer
+              createdAt:
+                type: string
+            required:
+              - id
+              - matchId
+              - teamId
+              - playerId
+              - isStarting
+              - createdAt
+      required:
+        - matchId
+        - isLocked
+        - entries
     Card:
       type: object
       properties:
@@ -1093,6 +1124,8 @@ components:
             - kickoff_reminder
             - match_postponed
             - match_cancelled
+            - match_walkover
+            - match_abandoned
         title:
           type: string
           minLength: 1
@@ -1194,6 +1227,9 @@ components:
         caption:
           type: string
           maxLength: 500
+        competitionId:
+          type: string
+          format: uuid
         matchId:
           type: string
           format: uuid
@@ -3281,7 +3317,7 @@ paths:
       responses:
         "201":
           description: Event recorded
-  /api/matches/{matchId}/lineups:
+  /api/matches/{matchId}/lineup:
     get:
       tags:
         - Lineups
@@ -3298,6 +3334,52 @@ paths:
       responses:
         "200":
           description: Match lineups
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matchId:
+                    type: string
+                    format: uuid
+                  isLocked:
+                    type: boolean
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        matchId:
+                          type: string
+                          format: uuid
+                        teamId:
+                          type: string
+                          format: uuid
+                        playerId:
+                          type: string
+                          format: uuid
+                        isStarting:
+                          type: boolean
+                        playerName:
+                          type: string
+                        jerseyNumber:
+                          type: integer
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - matchId
+                        - teamId
+                        - playerId
+                        - isStarting
+                        - createdAt
+                required:
+                  - matchId
+                  - isLocked
+                  - entries
     post:
       tags:
         - Lineups
@@ -3317,33 +3399,139 @@ paths:
             schema:
               type: object
               properties:
-                matchId:
-                  type: string
-                  format: uuid
                 teamId:
                   type: string
                   format: uuid
-                playerIds:
+                players:
                   type: array
                   items:
-                    type: string
-                    format: uuid
+                    type: object
+                    properties:
+                      playerId:
+                        type: string
+                        format: uuid
+                      isStarting:
+                        type: boolean
+                    required:
+                      - playerId
+                      - isStarting
                   minItems: 1
                   maxItems: 20
-                isStarting:
-                  type: boolean
-                  default: true
-                submittedBy:
-                  type: string
-                  format: uuid
               required:
-                - matchId
                 - teamId
-                - playerIds
-                - submittedBy
+                - players
       responses:
-        "201":
+        "200":
           description: Lineup submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matchId:
+                    type: string
+                    format: uuid
+                  isLocked:
+                    type: boolean
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        matchId:
+                          type: string
+                          format: uuid
+                        teamId:
+                          type: string
+                          format: uuid
+                        playerId:
+                          type: string
+                          format: uuid
+                        isStarting:
+                          type: boolean
+                        playerName:
+                          type: string
+                        jerseyNumber:
+                          type: integer
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - matchId
+                        - teamId
+                        - playerId
+                        - isStarting
+                        - createdAt
+                required:
+                  - matchId
+                  - isLocked
+                  - entries
+  /api/matches/{matchId}/lineup/lock:
+    post:
+      tags:
+        - Lineups
+      summary: Lock lineups
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: matchId
+          in: path
+      responses:
+        "200":
+          description: Lineups locked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matchId:
+                    type: string
+                    format: uuid
+                  isLocked:
+                    type: boolean
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        matchId:
+                          type: string
+                          format: uuid
+                        teamId:
+                          type: string
+                          format: uuid
+                        playerId:
+                          type: string
+                          format: uuid
+                        isStarting:
+                          type: boolean
+                        playerName:
+                          type: string
+                        jerseyNumber:
+                          type: integer
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - matchId
+                        - teamId
+                        - playerId
+                        - isStarting
+                        - createdAt
+                required:
+                  - matchId
+                  - isLocked
+                  - entries
   /api/competitions/{competitionId}/standings:
     get:
       tags:

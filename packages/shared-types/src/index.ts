@@ -969,34 +969,36 @@ export type CreateMatchEvent = z.infer<typeof CreateMatchEventSchema>;
 // Lineup
 // ============================================================================
 
-export const LineupSchema = z.object({
+export const LineupPlayerSchema = z.object({
+  playerId: z.string().uuid(),
+  isStarting: z.boolean(),
+});
+export type LineupPlayer = z.infer<typeof LineupPlayerSchema>;
+
+export const SubmitLineupSchema = z.object({
+  teamId: z.string().uuid(),
+  players: z.array(LineupPlayerSchema).min(1).max(20),
+});
+export type SubmitLineup = z.infer<typeof SubmitLineupSchema>;
+
+export const LineupEntrySchema = z.object({
   id: z.string().uuid(),
   matchId: z.string().uuid(),
   teamId: z.string().uuid(),
-  playerIds: z.array(z.string().uuid()).min(1).max(20).refine(
-    (ids) => new Set(ids).size === ids.length,
-    { message: 'Player IDs must be unique' }
-  ),
-  isStarting: z.boolean().default(true),
-  isLocked: z.boolean().default(false),
-  submittedBy: z.string().uuid(),
-  submittedAt: z.string(),
+  playerId: z.string().uuid(),
+  isStarting: z.boolean(),
+  playerName: z.string().optional(),
+  jerseyNumber: z.number().int().optional(),
   createdAt: z.string(),
-  updatedAt: z.string(),
 });
-export type Lineup = z.infer<typeof LineupSchema>;
+export type LineupEntry = z.infer<typeof LineupEntrySchema>;
 
-export const CreateLineupSchema = z.object({
+export const LineupResponseSchema = z.object({
   matchId: z.string().uuid(),
-  teamId: z.string().uuid(),
-  playerIds: z.array(z.string().uuid()).min(1).max(20).refine(
-    (ids) => new Set(ids).size === ids.length,
-    { message: 'Player IDs must be unique' }
-  ),
-  isStarting: z.boolean().default(true),
-  submittedBy: z.string().uuid(),
+  isLocked: z.boolean(),
+  entries: z.array(LineupEntrySchema),
 });
-export type CreateLineup = z.infer<typeof CreateLineupSchema>;
+export type LineupResponse = z.infer<typeof LineupResponseSchema>;
 
 // ============================================================================
 // Card (Discipline)

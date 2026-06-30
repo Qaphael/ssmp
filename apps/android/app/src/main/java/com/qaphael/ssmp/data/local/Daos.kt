@@ -60,13 +60,16 @@ interface LineupDao {
     fun getAllFlow(): Flow<List<LineupEntity>>
 
     @Query("SELECT * FROM lineups WHERE matchId = :matchId")
-    suspend fun getByMatchId(matchId: String): LineupEntity?
+    suspend fun getByMatchId(matchId: String): List<LineupEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(lineup: LineupEntity)
 
-    @Update
-    suspend fun update(lineup: LineupEntity)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(lineups: List<LineupEntity>)
+
+    @Query("DELETE FROM lineups WHERE matchId = :matchId")
+    suspend fun deleteByMatchId(matchId: String)
 }
 
 @Dao

@@ -4,6 +4,7 @@ const { rbac } = require('../../middleware/rbac');
 const { validate } = require('../../middleware/validate');
 const matchController = require('./match.controller');
 const matchEventController = require('./match-event.controller');
+const lineupRoutes = require('../lineups/lineup.routes');
 const {
   CreateMatchSchema,
   UpdateMatchStatusSchema,
@@ -26,5 +27,7 @@ router.post('/:id/walkover', auth, rbac('match:walkover'), validate(RecordWalkov
 router.post('/:id/postpone', auth, rbac('match:postpone'), validate(RecordPostponementSchema), matchController.postpone);
 router.get('/:id/events', auth, rbac('match:read'), matchEventController.listByMatch);
 router.post('/:id/events', auth, rbac('match:record-event'), validate(CreateMatchEventSchema), matchEventController.create);
+
+router.use('/:id/lineup', lineupRoutes);
 
 module.exports = router;

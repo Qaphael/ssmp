@@ -117,18 +117,20 @@ class TeamRepository @Inject constructor(
     }
 
     // --- Lineups ---
-    suspend fun getLineup(matchId: String): LineupEntity? = lineupDao.getByMatchId(matchId)
+    suspend fun getLineup(matchId: String): List<LineupEntity> = lineupDao.getByMatchId(matchId)
 
     suspend fun submitLineup(
         matchId: String,
         teamId: String,
         playerIds: List<String>,
         submittedBy: String
-    ): Result<LineupDto> {
+    ): Result<LineupResponse> {
         return try {
-            val lineup = api.submitLineup(matchId, CreateLineupRequest(matchId, teamId, playerIds, true, submittedBy))
-            lineupDao.insert(lineup.toEntity())
-            Result.success(lineup)
+            val players = playerIds.map { LineupPlayerEntry(playerId = it, isStarting = true) }
+            val response = api.submitLineup(matchId, SubmitLineupRequest(teamId, players))
+            lineupDao.deleteByMatchId(matchId)
+            lineupDao.insertAll(response.entries.map { it.toEntity(matchId, response.isLocked) })
+            Result.success(response)
         } catch (e: Exception) {
             offlineQueue.enqueue("lineup", matchId, "create", mapOf(
                 "matchId" to matchId, "teamId" to teamId, "playerIds" to playerIds, "submittedBy" to submittedBy
@@ -222,9 +224,10 @@ class TeamRepository @Inject constructor(
         awayScore = awayScore, pitchId = pitchId, officialId = officialId, matchday = matchday
     )
 
-    private fun LineupDto.toEntity() = LineupEntity(
-        matchId = matchId, teamId = teamId, playerIds = playerIds,
-        isStarting = isStarting, isLocked = isLocked
+    private fun LineupEntryDto.toEntity(matchId: String, isLocked: Boolean) = LineupEntity(
+        id = id, matchId = matchId, teamId = teamId, playerId = playerId,
+        isStarting = isStarting, playerName = playerName, jerseyNumber = jerseyNumber,
+        isLocked = isLocked
     )
 
     private fun NotificationDto.toEntity() = NotificationEntity(

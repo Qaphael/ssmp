@@ -12,10 +12,9 @@ import androidx.room.TypeConverters
         NotificationEntity::class,
         PendingWriteEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
-@TypeConverters(StringListConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun playerDao(): PlayerDao
     abstract fun matchDao(): MatchDao

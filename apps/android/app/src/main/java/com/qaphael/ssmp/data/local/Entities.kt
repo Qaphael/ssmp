@@ -42,12 +42,15 @@ data class MatchEntity(
 
 @Entity(tableName = "lineups")
 data class LineupEntity(
-    @PrimaryKey val matchId: String,
+    @PrimaryKey val id: String,
+    val matchId: String,
     val teamId: String,
-    val playerIds: List<String>,
+    val playerId: String,
     val isStarting: Boolean = true,
+    val playerName: String? = null,
+    val jerseyNumber: Int? = null,
     val isLocked: Boolean = false,
-    val submittedAt: String? = null
+    val createdAt: String? = null
 )
 
 @Entity(tableName = "notifications")

@@ -89,11 +89,10 @@ class SyncWorker @AssistedInject constructor(
         val playerIdsRaw = data["playerIds"] as? List<*>
         val playerIds = playerIdsRaw?.mapNotNull { it as? String } ?: emptyList()
 
-        api.submitLineup(write.entityId, CreateLineupRequest(
-            matchId = data["matchId"] as? String ?: write.entityId,
+        val players = playerIds.map { LineupPlayerEntry(playerId = it, isStarting = true) }
+        api.submitLineup(write.entityId, SubmitLineupRequest(
             teamId = data["teamId"] as? String ?: "",
-            playerIds = playerIds,
-            submittedBy = data["submittedBy"] as? String ?: ""
+            players = players
         ))
     }
 

@@ -21,7 +21,8 @@ import {
   FixtureSchema,
   MatchSchema,
   MatchEventSchema,
-  LineupSchema,
+  LineupEntrySchema,
+  LineupResponseSchema,
   CardSchema,
   SuspensionSchema,
   NotificationSchema,
@@ -66,7 +67,7 @@ import {
   RecordWalkoverSchema,
   RecordPostponementSchema,
   CreateMatchEventSchema,
-  CreateLineupSchema,
+  SubmitLineupSchema,
   CreateCardSchema,
   MarkNotificationReadSchema,
   ApproveMediaSchema,
@@ -130,7 +131,8 @@ registry.register('TransferRequest', TransferRequestSchema);
 registry.register('Fixture', FixtureSchema);
 registry.register('Match', MatchSchema);
 registry.register('MatchEvent', MatchEventSchema);
-registry.register('Lineup', LineupSchema);
+registry.register('LineupEntry', LineupEntrySchema);
+registry.register('LineupResponse', LineupResponseSchema);
 registry.register('Card', CardSchema);
 registry.register('Suspension', SuspensionSchema);
 registry.register('Notification', NotificationSchema);
@@ -1049,7 +1051,7 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'get',
-  path: '/api/matches/{matchId}/lineups',
+  path: '/api/matches/{matchId}/lineup',
   tags: ['Lineups'],
   summary: 'Get lineups for match',
   security: [{ bearerAuth: [] }],
@@ -1059,25 +1061,44 @@ registry.registerPath({
   responses: {
     200: {
       description: 'Match lineups',
+      content: { 'application/json': { schema: LineupResponseSchema } },
     },
   },
 });
 
 registry.registerPath({
   method: 'post',
-  path: '/api/matches/{matchId}/lineups',
+  path: '/api/matches/{matchId}/lineup',
   tags: ['Lineups'],
   summary: 'Submit lineup',
   security: [{ bearerAuth: [] }],
   request: {
     params: z.object({ matchId: z.string().uuid() }),
     body: {
-      content: { 'application/json': { schema: CreateLineupSchema } },
+      content: { 'application/json': { schema: SubmitLineupSchema } },
     },
   },
   responses: {
-    201: {
+    200: {
       description: 'Lineup submitted',
+      content: { 'application/json': { schema: LineupResponseSchema } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/matches/{matchId}/lineup/lock',
+  tags: ['Lineups'],
+  summary: 'Lock lineups',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ matchId: z.string().uuid() }),
+  },
+  responses: {
+    200: {
+      description: 'Lineups locked',
+      content: { 'application/json': { schema: LineupResponseSchema } },
     },
   },
 });

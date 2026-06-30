@@ -23,6 +23,7 @@ class MockDB {
       push_subscriptions: new Map(),
       device_tokens: new Map(),
       media: new Map(),
+      lineups: new Map(),
       users: new Map(),
     };
     this.autoId = 1;
@@ -297,6 +298,11 @@ const mockPool = {
     if (lowerSql.includes('select count(*) from players')) {
       const rows = db.findAll('players');
       return { rows: [{ count: rows.length }] };
+    }
+
+    if (lowerSql.includes('select id, status from players where id')) {
+      const row = db.findById('players', params[0]);
+      return { rows: row ? [{ id: row.id, status: row.status }] : [] };
     }
 
     if (lowerSql.includes('from players p')) {
@@ -618,6 +624,13 @@ const mockPool = {
         (r) => r.competition_id === params[0] && !r.is_served
       );
       return { rows };
+    }
+
+    if (lowerSql.includes('from suspensions') && lowerSql.includes('where player_id') && lowerSql.includes('is_served')) {
+      const rows = db.findAll('suspensions').filter(
+        (r) => r.player_id === params[0] && r.competition_id === params[1] && r.is_served === false
+      );
+      return { rows: rows.slice(0, 1) };
     }
 
     if (lowerSql.includes('select * from suspensions') && lowerSql.includes('where player_id')) {
@@ -957,6 +970,53 @@ const mockPool = {
     if (lowerSql.includes('delete from media')) {
       db.delete('media', params[0]);
       return { rows: [{ id: params[0] }] };
+    }
+
+    // Lineups
+    if (lowerSql.includes('insert into lineups')) {
+      const row = db.insert('lineups', {
+        match_id: params[0],
+        team_id: params[1],
+        player_id: params[2],
+        is_starting: params[3],
+      });
+      return { rows: [row] };
+    }
+
+    if (lowerSql.includes('select count(*) from lineups')) {
+      let rows = db.findAll('lineups');
+      if (lowerSql.includes('where match_id =')) rows = rows.filter((r) => r.match_id === params[0]);
+      return { rows: [{ count: rows.length }] };
+    }
+
+    if (lowerSql.includes('from lineups l')) {
+      let rows = db.findAll('lineups');
+      if (lowerSql.includes('where l.match_id')) rows = rows.filter((r) => r.match_id === params[0]);
+      if (lowerSql.includes('and l.team_id')) rows = rows.filter((r) => r.team_id === params[1]);
+      // JOIN players for name/jersey_number
+      rows = rows.map((r) => {
+        const player = db.findById('players', r.player_id) || {};
+        return {
+          ...r,
+          first_name: player.first_name || null,
+          last_name: player.last_name || null,
+          jersey_number: player.jersey_number || null,
+        };
+      });
+      return { rows };
+    }
+
+    if (lowerSql.includes('delete from lineups')) {
+      let deleted = [];
+      const allLineups = db.findAll('lineups');
+      for (const row of allLineups) {
+        if (row.match_id === params[0]) {
+          if (lowerSql.includes('and team_id') && row.team_id !== params[1]) continue;
+          db.delete('lineups', row.id);
+          deleted.push(row);
+        }
+      }
+      return { rows: deleted };
     }
 
     // Users (auth)

@@ -125,22 +125,32 @@ data class FixtureDto(
 
 // Lineup
 @JsonClass(generateAdapter = true)
-data class LineupDto(
+data class LineupEntryDto(
     val id: String,
-    @Json(name = "matchId") val matchId: String,
+    @Json(name = "playerId") val playerId: String,
     @Json(name = "teamId") val teamId: String,
-    @Json(name = "playerIds") val playerIds: List<String>,
     @Json(name = "isStarting") val isStarting: Boolean,
-    @Json(name = "isLocked") val isLocked: Boolean
+    @Json(name = "playerName") val playerName: String? = null,
+    @Json(name = "jerseyNumber") val jerseyNumber: Int? = null
 )
 
 @JsonClass(generateAdapter = true)
-data class CreateLineupRequest(
+data class LineupResponse(
     @Json(name = "matchId") val matchId: String,
+    @Json(name = "isLocked") val isLocked: Boolean,
+    val entries: List<LineupEntryDto>
+)
+
+@JsonClass(generateAdapter = true)
+data class SubmitLineupRequest(
     @Json(name = "teamId") val teamId: String,
-    @Json(name = "playerIds") val playerIds: List<String>,
-    @Json(name = "isStarting") val isStarting: Boolean = true,
-    @Json(name = "submittedBy") val submittedBy: String
+    val players: List<LineupPlayerEntry>
+)
+
+@JsonClass(generateAdapter = true)
+data class LineupPlayerEntry(
+    @Json(name = "playerId") val playerId: String,
+    @Json(name = "isStarting") val isStarting: Boolean = true
 )
 
 // Match Event
