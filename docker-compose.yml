@@ -12,8 +12,8 @@ services:
       JWT_SECRET: ssmp-prod-jwt-secret-2026
       NODE_ENV: production
       PORT: 3000
-      CORS_ORIGIN: http://212.47.72.186:3006
-      SOCKET_CORS_ORIGIN: http://212.47.72.186:3006
+      CORS_ORIGIN: https://admin.ssmp.ocaya.space,https://ssmp.ocaya.space
+      SOCKET_CORS_ORIGIN: https://admin.ssmp.ocaya.space,https://ssmp.ocaya.space
     ports:
       - "3005:3000"
     networks:
@@ -24,7 +24,7 @@ services:
       context: .
       dockerfile: apps/admin/Dockerfile
       args:
-        VITE_API_URL: http://212.47.72.186:3005
+        VITE_API_URL: https://api.ssmp.ocaya.space
     container_name: ssmp-admin
     restart: unless-stopped
     ports:
