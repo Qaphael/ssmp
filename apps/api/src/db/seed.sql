@@ -3,14 +3,14 @@
 -- Users (password for all: 'password123', bcrypt hash)
 -- Hash generated with: bcryptjs.hashSync('password123', 10)
 INSERT INTO users (id, email, password_hash, first_name, last_name, role) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'admin@ssmp.local',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'System', 'Admin',    'system_admin'),
-  ('a0000000-0000-0000-0000-000000000002', 'comp@ssmp.local',      '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Comp',   'Admin',    'comp_admin'),
-  ('a0000000-0000-0000-0000-000000000003', 'registrar@ssmp.local', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Jane',   'Registrar','registrar'),
-  ('a0000000-0000-0000-0000-000000000004', 'refcoord@ssmp.local',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Mike',   'Coords',   'ref_coordinator'),
-  ('a0000000-0000-0000-0000-000000000005', 'media@ssmp.local',     '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Lisa',   'Media',    'media_officer'),
-  ('a0000000-0000-0000-0000-000000000006', 'official@ssmp.local',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Ref',    'Official', 'official'),
-  ('a0000000-0000-0000-0000-000000000007', 'coach1@ssmp.local',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Coach',  'One',      'coach'),
-  ('a0000000-0000-0000-0000-000000000008', 'coach2@ssmp.local',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Coach',  'Two',      'coach')
+  ('a0000000-0000-0000-0000-000000000001', 'admin@ssmp.local',    '$2b$10$6cBRUiXCXyvseH1MpUOIfOC6itp7ofa4JPrCojTOfLf4y2CMef5Z.', 'System', 'Admin',    'system_admin'),
+  ('a0000000-0000-0000-0000-000000000002', 'comp@ssmp.local',      '$2b$10$6cBRUiXCXyvseH1MpUOIfOC6itp7ofa4JPrCojTOfLf4y2CMef5Z.', 'Comp',   'Admin',    'comp_admin'),
+  ('a0000000-0000-0000-0000-000000000003', 'registrar@ssmp.local', '$2b$10$6cBRUiXCXyvseH1MpUOIfOC6itp7ofa4JPrCojTOfLf4y2CMef5Z.', 'Jane',   'Registrar','registrar'),
+  ('a0000000-0000-0000-0000-000000000004', 'refcoord@ssmp.local',  '$2b$10$6cBRUiXCXyvseH1MpUOIfOC6itp7ofa4JPrCojTOfLf4y2CMef5Z.', 'Mike',   'Coords',   'ref_coordinator'),
+  ('a0000000-0000-0000-0000-000000000005', 'media@ssmp.local',     '$2b$10$6cBRUiXCXyvseH1MpUOIfOC6itp7ofa4JPrCojTOfLf4y2CMef5Z.', 'Lisa',   'Media',    'media_officer'),
+  ('a0000000-0000-0000-0000-000000000006', 'official@ssmp.local',  '$2b$10$6cBRUiXCXyvseH1MpUOIfOC6itp7ofa4JPrCojTOfLf4y2CMef5Z.', 'Ref',    'Official', 'official'),
+  ('a0000000-0000-0000-0000-000000000007', 'coach1@ssmp.local',    '$2b$10$6cBRUiXCXyvseH1MpUOIfOC6itp7ofa4JPrCojTOfLf4y2CMef5Z.', 'Coach',  'One',      'coach'),
+  ('a0000000-0000-0000-0000-000000000008', 'coach2@ssmp.local',    '$2b$10$6cBRUiXCXyvseH1MpUOIfOC6itp7ofa4JPrCojTOfLf4y2CMef5Z.', 'Coach',  'Two',      'coach')
 ON CONFLICT (id) DO NOTHING;
 
 -- Organization
