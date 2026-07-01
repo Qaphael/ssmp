@@ -407,6 +407,98 @@ class MatchService {
     return result.rows[0] || null;
   }
 
+  async correctScore(id, homeScore, awayScore, auditCtx) {
+    const match = await this.getById(id);
+    if (!match) return null;
+
+    if (match.status !== 'published') {
+      throw Object.assign(
+        new Error(`Match must be published to correct score. Current status: ${match.status}`),
+        { status: 422 }
+      );
+    }
+
+    const oldHomeScore = match.home_score;
+    const oldAwayScore = match.away_score;
+
+    const result = await pool.query(
+      `UPDATE matches SET home_score = $1, away_score = $2, updated_at = NOW()
+       WHERE id = $3 RETURNING *`,
+      [homeScore, awayScore, id]
+    );
+    const updated = result.rows[0];
+    if (!updated) return null;
+
+    await this._recomputeStandings(match, oldHomeScore, oldAwayScore, homeScore, awayScore);
+
+    socketService.broadcastToMatch(id, 'score_update', {
+      matchId: id,
+      homeScore,
+      awayScore,
+    });
+
+    if (auditCtx) {
+      await createAuditLog({
+        ...auditCtx,
+        action: 'match:correct-score',
+        entityType: 'match',
+        entityId: id,
+        oldValue: { home_score: oldHomeScore, away_score: oldAwayScore },
+        newValue: { home_score: homeScore, away_score: awayScore },
+      });
+    }
+
+    return updated;
+  }
+
+  async _recomputeStandings(match, oldHome, oldAway, newHome, newAway) {
+    const compResult = await pool.query(
+      `SELECT rules FROM competitions WHERE id = $1`, [match.competition_id]
+    );
+    const rules = compResult.rows[0]?.rules || {};
+    const ptsWin = rules.pointsForWin ?? 3;
+    const ptsDraw = rules.pointsForDraw ?? 1;
+    const ptsLoss = rules.pointsForLoss ?? 0;
+
+    const outcome = (gf, ga) => {
+      if (gf > ga) return { w: 1, d: 0, l: 0, pts: ptsWin };
+      if (gf < ga) return { w: 0, d: 0, l: 1, pts: ptsLoss };
+      return { w: 0, d: 1, l: 0, pts: ptsDraw };
+    };
+
+    const oh = outcome(oldHome, oldAway);
+    const oa = outcome(oldAway, oldHome);
+    const nh = outcome(newHome, newAway);
+    const na = outcome(newAway, newHome);
+
+    const applyDelta = async (teamId, old, fresh, teamGfOld, teamGaOld, teamGfNew, teamGaNew) => {
+      await pool.query(
+        `UPDATE standings SET
+           won = won + $1, drawn = drawn + $2, lost = lost + $3,
+           goals_for = goals_for + $4, goals_against = goals_against + $5,
+           goal_difference = goal_difference + $6, points = points + $7,
+           updated_at = NOW()
+         WHERE competition_id = $8 AND team_id = $9`,
+        [
+          fresh.w - old.w,
+          fresh.d - old.d,
+          fresh.l - old.l,
+          teamGfNew - teamGfOld,
+          teamGaNew - teamGaOld,
+          (teamGfNew - teamGaNew) - (teamGfOld - teamGaOld),
+          fresh.pts - old.pts,
+          match.competition_id,
+          teamId,
+        ]
+      );
+    };
+
+    await applyDelta(match.home_team_id, oh, nh, oldHome, oldAway, newHome, newAway);
+    await applyDelta(match.away_team_id, oa, na, oldAway, oldHome, newAway, newHome);
+
+    console.log(`[STANDINGS] Recomputed standings for competition ${match.competition_id} after score correction on match ${match.id}`);
+  }
+
   async updateStandings(match) {
     const compResult = await pool.query(
       `SELECT rules FROM competitions WHERE id = $1`, [match.competition_id]

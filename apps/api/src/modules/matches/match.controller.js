@@ -112,6 +112,23 @@ class MatchController {
       res.json({ success: true, data: match });
     } catch (err) { next(err); }
   }
+
+  async correctScore(req, res, next) {
+    try {
+      const auditCtx = { userId: req.user.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+      const match = await matchService.correctScore(req.params.id, req.body.homeScore, req.body.awayScore, auditCtx);
+      if (!match) return res.status(404).json({ error: 'Match not found' });
+      res.json({ success: true, data: match });
+    } catch (err) {
+      if (err.status) {
+        return res.status(err.status).json({ error: err.message });
+      }
+      if (err.message.includes('Match must be')) {
+        return res.status(422).json({ error: err.message });
+      }
+      next(err);
+    }
+  }
 }
 
 module.exports = new MatchController();

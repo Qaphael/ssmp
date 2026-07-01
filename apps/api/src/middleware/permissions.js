@@ -107,6 +107,7 @@ const permissions = {
   'match:verify':        [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN],
   'match:walkover':      [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN],
   'match:postpone':      [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN],
+  'match:correct-score': [ROLES.SYSTEM_ADMIN],
 
   // ─── Lineups ─────────────────────────────────────────────────────
   'lineup:read':         [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.COACH, ROLES.OFFICIAL],
