@@ -33,6 +33,8 @@ const mediaPublicRoutes = require('./modules/media/media-public.routes');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 app.use(helmet());
 
 const corsOrigins = env.corsOrigin === '*' ? '*' : env.corsOrigin.split(',').map((o) => o.trim());
