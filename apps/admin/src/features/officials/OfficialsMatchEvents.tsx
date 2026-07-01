@@ -82,6 +82,9 @@ export default function OfficialsMatchEvents({
   const [cancelReasonText, setCancelReasonText] = useState('');
   const [showAbandonInput, setShowAbandonInput] = useState(false);
   const [abandonReasonText, setAbandonReasonText] = useState('');
+  const [showCorrectScore, setShowCorrectScore] = useState(false);
+  const [correctHomeScore, setCorrectHomeScore] = useState(0);
+  const [correctAwayScore, setCorrectAwayScore] = useState(0);
 
   // Current user (mock for dev)
   const currentUserId = currentRole === 'official' ? 'official-001' : 'admin-001';
@@ -405,6 +408,18 @@ export default function OfficialsMatchEvents({
     }
   };
 
+  const handleCorrectScore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMatch || !apiAvailable) return;
+    try {
+      const updated = await matchApi.correctScore(selectedMatch.id, correctHomeScore, correctAwayScore);
+      setLiveMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      setShowCorrectScore(false);
+    } catch (err: any) {
+      setMatchError(err.message);
+    }
+  };
+
   // Get the fixture data (from mockDb for backwards compat or from live API)
   const getSelectedFixture = (): Fixture | null => {
     if (selectedMatch) {
@@ -705,6 +720,19 @@ export default function OfficialsMatchEvents({
                       </button>
                     )}
 
+                    {selectedMatch.status === 'published' && currentRole === 'system_admin' && (
+                      <button
+                        onClick={() => {
+                          setShowCorrectScore(!showCorrectScore);
+                          setCorrectHomeScore(selectedMatch.home_score ?? 0);
+                          setCorrectAwayScore(selectedMatch.away_score ?? 0);
+                        }}
+                        className="px-4 py-2 border border-amber-400 hover:bg-amber-50 text-amber-700 text-[10px] uppercase tracking-wider font-bold transition cursor-pointer bg-white"
+                      >
+                        Correct Score
+                      </button>
+                    )}
+
                     {canTransitionTo('postponed') && (
                       <button
                         onClick={() => { setShowPostponeInput(!showPostponeInput); setShowWalkoverInput(false); }}
@@ -830,6 +858,51 @@ export default function OfficialsMatchEvents({
                           Confirm Abandonment
                         </button>
                         <button type="button" onClick={() => setShowAbandonInput(false)} className="px-3 py-1.5 border border-orange-200 text-orange-700 uppercase tracking-wider font-bold text-[10px] hover:bg-orange-100">
+                          Dismiss
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {showCorrectScore && (
+                    <form onSubmit={handleCorrectScore} className="mt-4 border border-amber-300 bg-amber-50 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] uppercase font-bold text-amber-700">Correct Published Score</p>
+                        <span className="text-[9px] text-amber-600 font-mono">(standings will be recomputed)</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[9px] uppercase tracking-wider text-amber-600 mb-1 font-bold">
+                            {matchHomeTeam?.name} (Home)
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={correctHomeScore}
+                            onChange={(e) => setCorrectHomeScore(parseInt(e.target.value) || 0)}
+                            className="w-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-mono focus:ring-0 focus:outline-none"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase tracking-wider text-amber-600 mb-1 font-bold">
+                            {matchAwayTeam?.name} (Away)
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={correctAwayScore}
+                            onChange={(e) => setCorrectAwayScore(parseInt(e.target.value) || 0)}
+                            className="w-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-mono focus:ring-0 focus:outline-none"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button type="submit" className="px-3 py-1.5 bg-amber-600 text-white uppercase tracking-wider font-bold text-[10px] hover:bg-amber-700">
+                          Apply Correction
+                        </button>
+                        <button type="button" onClick={() => setShowCorrectScore(false)} className="px-3 py-1.5 border border-amber-300 text-amber-700 uppercase tracking-wider font-bold text-[10px] hover:bg-amber-100">
                           Dismiss
                         </button>
                       </div>

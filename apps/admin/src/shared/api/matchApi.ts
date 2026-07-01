@@ -149,3 +149,11 @@ export async function postponeMatch(matchId: string, postponedReason: string): P
   });
   return res.data;
 }
+
+export async function correctScore(matchId: string, homeScore: number, awayScore: number): Promise<MatchData> {
+  const res = await apiFetch(`/api/matches/${matchId}/correct-score`, {
+    method: 'POST',
+    body: JSON.stringify({ homeScore, awayScore }),
+  });
+  return res.data;
+}
