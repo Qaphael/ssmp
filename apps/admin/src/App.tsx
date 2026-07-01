@@ -46,19 +46,31 @@ export default function App() {
     if (url) {
       try {
         const compsRes = await fetch(`${url}/api/public/competitions`);
-        if (compsRes.ok) setCompetitions(await compsRes.json());
+        if (compsRes.ok) {
+          const data = await compsRes.json();
+          setCompetitions(data.data || data);
+        }
       } catch { /* fall through to demo */ }
       try {
         const seasonsRes = await fetch(`${url}/api/public/seasons`);
-        if (seasonsRes.ok) setSeasons(await seasonsRes.json());
+        if (seasonsRes.ok) {
+          const data = await seasonsRes.json();
+          setSeasons(data.data || data);
+        }
       } catch { /* ignore */ }
       try {
         const teamsRes = await fetch(`${url}/api/public/teams`);
-        if (teamsRes.ok) setTeams(await teamsRes.json());
+        if (teamsRes.ok) {
+          const data = await teamsRes.json();
+          setTeams(data.data || data);
+        }
       } catch { /* ignore */ }
       try {
         const playersRes = await fetch(`${url}/api/public/players`);
-        if (playersRes.ok) setPlayers(await playersRes.json());
+        if (playersRes.ok) {
+          const data = await playersRes.json();
+          setPlayers(data.data || data);
+        }
       } catch { /* ignore */ }
       try {
         const token = await mockDb.getToken();
