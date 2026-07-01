@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  ssmp-postgres:
+    image: postgres:16-alpine
+    container_name: ssmp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ssmp
+      POSTGRES_USER: ssmp
+      POSTGRES_PASSWORD: ssmp_2026!
+    ports:
+      - "5434:5432"
+    volumes:
+      - ssmp_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ssmp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ssmp-api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: ssmp-api
+    restart: unless-stopped
+    depends_on:
+      ssmp-postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ssmp:ssmp_2026!@ssmp-postgres:5432/ssmp
+      JWT_SECRET: ssmp-prod-jwt-secret-2026
+      NODE_ENV: production
+      PORT: 3000
+      CORS_ORIGIN: http://212.47.72.186:3006
+      SOCKET_CORS_ORIGIN: http://212.47.72.186:3006
+    ports:
+      - "3005:3000"
+
+  ssmp-admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        VITE_API_URL: http://212.47.72.186:3005
+    container_name: ssmp-admin
+    restart: unless-stopped
+    ports:
+      - "3006:80"
+
+volumes:
+  ssmp_pgdata:

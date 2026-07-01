@@ -1,0 +1,9 @@
+node_modules
+*/node_modules
+**/node_modules
+.git
+apps/android
+apps/public
+*.md
+!apps/api/src/db/migrations/*.sql
+!apps/api/src/db/seed.sql
