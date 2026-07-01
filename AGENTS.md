@@ -58,6 +58,7 @@ The admin app has a full auth gate. When `VITE_API_URL` is set:
 - All API calls use real JWT from `src/shared/api/auth.ts`
 - 401 responses auto-logout and redirect to login
 - Header shows real user name/initials, logout button
+- **Sidebar is role-filtered** — each role sees only relevant nav items (e.g. coaches see Dashboard + News + Profile only)
 
 When `VITE_API_URL` is empty (demo mode):
 - Skips auth entirely, uses `mockDb` with localStorage
@@ -147,6 +148,10 @@ Auto-suspension on yellow card threshold. Immediate red card suspension. Suspens
 ### Real-time (Socket.IO)
 
 Same port as API. JWT auth on handshake. Events: `match_status_change`, `match_event`, `score_update`, `notification`. Rooms: `match:<id>`. See `apps/api/src/services/socket.service.js`.
+
+### Coach news/media
+
+Coaches can create and edit news articles and media, scoped to their own team via `teams.coach_id`. News is never auto-published by coaches (requires media_officer or admin to publish). Media uploaded by coaches requires approval. Coaches can only edit their own news articles (not others'). List endpoints automatically filter to the coach's team.
 
 ### Rate limiting
 
