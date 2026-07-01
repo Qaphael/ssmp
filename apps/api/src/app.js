@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const { errorHandler } = require('./middleware/errorHandler');
 const { env } = require('./config/env');
@@ -30,7 +32,28 @@ const mediaPublicRoutes = require('./modules/media/media-public.routes');
 
 const app = express();
 
-app.use(cors());
+app.use(helmet());
+
+const corsOrigins = env.corsOrigin === '*' ? '*' : env.corsOrigin.split(',').map((o) => o.trim());
+app.use(cors({ origin: corsOrigins }));
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts, please try again later' },
+});
+
+app.use(generalLimiter);
 app.use(express.json());
 
 app.get('/health', (req, res) => {
@@ -47,7 +70,7 @@ if (env.nodeEnv === 'development') {
   });
 }
 
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/seasons', seasonRoutes);

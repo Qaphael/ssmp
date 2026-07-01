@@ -8,6 +8,7 @@ const env = {
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
   nodeEnv: process.env.NODE_ENV || 'development',
   socketCorsOrigin: process.env.SOCKET_CORS_ORIGIN || '*',
+  corsOrigin: process.env.CORS_ORIGIN || '*',
 
   // Web Push (VAPID)
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY || '',

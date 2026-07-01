@@ -5,8 +5,9 @@ let io = null;
 
 function init(httpServer) {
   const { Server } = require('socket.io');
+  const socketCorsOrigin = env.socketCorsOrigin === '*' ? '*' : env.socketCorsOrigin.split(',').map((o) => o.trim());
   io = new Server(httpServer, {
-    cors: { origin: '*', methods: ['GET', 'POST'] },
+    cors: { origin: socketCorsOrigin, methods: ['GET', 'POST'] },
   });
 
   io.use((socket, next) => {
