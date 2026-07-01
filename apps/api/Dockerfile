@@ -2,8 +2,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm 9 (matches lockfile v9)
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
 # Copy root workspace config
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
@@ -21,9 +21,6 @@ RUN pnpm --filter @ssmp/shared-types build
 
 # Copy API source
 COPY apps/api/ apps/api/
-
-# Copy migrations and seed
-COPY apps/api/src/db/ apps/api/src/db/
 
 WORKDIR /app/apps/api
 EXPOSE 3000
