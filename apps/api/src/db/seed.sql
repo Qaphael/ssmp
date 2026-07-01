@@ -3,14 +3,14 @@
 -- Users (password for all: 'password123', bcrypt hash)
 -- Hash generated with: bcryptjs.hashSync('password123', 10)
 INSERT INTO users (id, email, password_hash, first_name, last_name, role) VALUES
-  ('u0000000-0000-0000-0000-000000000001', 'admin@ssmp.local',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'System', 'Admin',    'system_admin'),
-  ('u0000000-0000-0000-0000-000000000002', 'comp@ssmp.local',      '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Comp',   'Admin',    'comp_admin'),
-  ('u0000000-0000-0000-0000-000000000003', 'registrar@ssmp.local', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Jane',   'Registrar','registrar'),
-  ('u0000000-0000-0000-0000-000000000004', 'refcoord@ssmp.local',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Mike',   'Coords',   'ref_coordinator'),
-  ('u0000000-0000-0000-0000-000000000005', 'media@ssmp.local',     '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Lisa',   'Media',    'media_officer'),
-  ('u0000000-0000-0000-0000-000000000006', 'official@ssmp.local',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Ref',    'Official', 'official'),
-  ('u0000000-0000-0000-0000-000000000007', 'coach1@ssmp.local',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Coach',  'One',      'coach'),
-  ('u0000000-0000-0000-0000-000000000008', 'coach2@ssmp.local',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Coach',  'Two',      'coach')
+  ('a0000000-0000-0000-0000-000000000001', 'admin@ssmp.local',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'System', 'Admin',    'system_admin'),
+  ('a0000000-0000-0000-0000-000000000002', 'comp@ssmp.local',      '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Comp',   'Admin',    'comp_admin'),
+  ('a0000000-0000-0000-0000-000000000003', 'registrar@ssmp.local', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Jane',   'Registrar','registrar'),
+  ('a0000000-0000-0000-0000-000000000004', 'refcoord@ssmp.local',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Mike',   'Coords',   'ref_coordinator'),
+  ('a0000000-0000-0000-0000-000000000005', 'media@ssmp.local',     '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Lisa',   'Media',    'media_officer'),
+  ('a0000000-0000-0000-0000-000000000006', 'official@ssmp.local',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Ref',    'Official', 'official'),
+  ('a0000000-0000-0000-0000-000000000007', 'coach1@ssmp.local',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Coach',  'One',      'coach'),
+  ('a0000000-0000-0000-0000-000000000008', 'coach2@ssmp.local',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Coach',  'Two',      'coach')
 ON CONFLICT (id) DO NOTHING;
 
 -- Organization
@@ -37,10 +37,10 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Teams
 INSERT INTO teams (id, competition_id, name, school_name, registration_status, roster_approval_status, coach_id) VALUES
-  ('66666666-6666-6666-6666-666666666666', '33333333-3333-3333-3333-333333333333', 'Lions', 'Central High', 'approved', 'approved', 'u0000000-0000-0000-0000-000000000007'),
-  ('77777777-7777-7777-7777-777777777777', '33333333-3333-3333-3333-333333333333', 'Eagles', 'North Academy', 'approved', 'approved', 'u0000000-0000-0000-0000-000000000007'),
-  ('88888888-8888-8888-8888-888888888888', '33333333-3333-3333-3333-333333333333', 'Tigers', 'South School', 'approved', 'approved', 'u0000000-0000-0000-0000-000000000008'),
-  ('99999999-9999-9999-9999-999999999999', '33333333-3333-3333-3333-333333333333', 'Wolves', 'East College', 'approved', 'approved', 'u0000000-0000-0000-0000-000000000008')
+  ('66666666-6666-6666-6666-666666666666', '33333333-3333-3333-3333-333333333333', 'Lions', 'Central High', 'approved', 'approved', 'a0000000-0000-0000-0000-000000000007'),
+  ('77777777-7777-7777-7777-777777777777', '33333333-3333-3333-3333-333333333333', 'Eagles', 'North Academy', 'approved', 'approved', 'a0000000-0000-0000-0000-000000000007'),
+  ('88888888-8888-8888-8888-888888888888', '33333333-3333-3333-3333-333333333333', 'Tigers', 'South School', 'approved', 'approved', 'a0000000-0000-0000-0000-000000000008'),
+  ('99999999-9999-9999-9999-999999999999', '33333333-3333-3333-3333-333333333333', 'Wolves', 'East College', 'approved', 'approved', 'a0000000-0000-0000-0000-000000000008')
 ON CONFLICT (id) DO NOTHING;
 
 -- Officials
