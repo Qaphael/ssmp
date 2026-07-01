@@ -180,6 +180,15 @@ class NotificationService {
     } catch { return []; }
   }
 
+  async _getRegistrarIds() {
+    try {
+      const result = await pool.query(
+        `SELECT id FROM users WHERE role = 'registrar'`
+      );
+      return result.rows.map((r) => r.id);
+    } catch { return []; }
+  }
+
   async _getUserEmail(userId) {
     try {
       const result = await pool.query(`SELECT email FROM users WHERE id = $1`, [userId]);
@@ -283,6 +292,23 @@ class NotificationService {
     this._deliverWebPush(coachIds, title, message, url, data);
     this._deliverEmail(coachIds, title, `<p>${message}</p>`);
     this._deliverAndroidPush(coachIds, title, message, data);
+  }
+
+  async rosterNeedsRereview(teamId, competitionId) {
+    const title = 'Roster Needs Re-Review';
+    const message = 'A roster change was made to an approved team. The roster needs re-review.';
+    const url = `/rosters`;
+    const data = { teamId, competitionId };
+
+    const registrarIds = await this._getRegistrarIds();
+    if (registrarIds.length === 0) return;
+
+    const entries = registrarIds.map((uid) => ({ userId: uid, type: 'roster_rereview', title, message, data }));
+    await this._persistBulk(entries);
+
+    this._deliverWebPush(registrarIds, title, message, url, data);
+    this._deliverEmail(registrarIds, title, `<p>${message}</p>`);
+    this._deliverAndroidPush(registrarIds, title, message, data);
   }
 
   async transferApproved(transfer) {

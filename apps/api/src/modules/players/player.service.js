@@ -1,5 +1,6 @@
 const { pool } = require('../../config/db');
 const { createAuditLog } = require('../../middleware/audit');
+const notificationService = require('../../services/notification.service');
 
 class PlayerService {
   async list(filters) {
@@ -92,6 +93,7 @@ class PlayerService {
       if (auditCtx) {
         await createAuditLog({ ...auditCtx, action: 'player:create', entityType: 'player', entityId: result.rows[0].id, newValue: result.rows[0] });
       }
+      await this._resetRosterApproval(data.teamId);
       return result.rows[0];
     } catch (err) {
       if (err.code === '23505') {
@@ -135,6 +137,7 @@ class PlayerService {
           await createAuditLog({ ...auditCtx, action: 'player:create', entityType: 'player', entityId: p.id, newValue: p });
         }
       }
+      await this._resetRosterApproval(teamId);
       return created;
     } catch (err) {
       await client.query('ROLLBACK');
@@ -198,6 +201,7 @@ class PlayerService {
       if (auditCtx && result.rows[0]) {
         await createAuditLog({ ...auditCtx, action: 'player:update', entityType: 'player', entityId: id, oldValue: existing, newValue: result.rows[0] });
       }
+      await this._resetRosterApproval(existing.team_id);
       return result.rows[0];
     } catch (err) {
       if (err.code === '23505') {
@@ -253,6 +257,18 @@ class PlayerService {
       await createAuditLog({ ...auditCtx, action: 'player:delete', entityType: 'player', entityId: id, oldValue: old });
     }
     return result.rows[0] || null;
+  }
+
+  async _resetRosterApproval(teamId) {
+    const result = await pool.query(
+      `UPDATE teams SET roster_approval_status = 'pending', updated_at = NOW()
+       WHERE id = $1 AND roster_approval_status = 'approved'
+       RETURNING id, competition_id`,
+      [teamId]
+    );
+    if (result.rows[0]) {
+      notificationService.rosterNeedsRereview(teamId, result.rows[0].competition_id);
+    }
   }
 
   async _checkRegistrationWindow(teamId) {
