@@ -41,81 +41,92 @@ export default function Sidebar({
   pendingMediaCount,
   userRole,
 }: SidebarProps) {
+  const isAdmin = userRole === 'system_admin' || userRole === 'comp_admin';
+  const isRegistrar = userRole === 'registrar';
+  const isRefCoord = userRole === 'ref_coordinator';
+  const isMediaOfficer = userRole === 'media_officer';
+  const isOfficial = userRole === 'official';
+  const isCoach = userRole === 'coach';
+
   const menuItems = [
     {
       id: 'dashboard',
-      label: 'Admin Dashboard',
+      label: isAdmin ? 'Admin Dashboard' : 'Dashboard',
       icon: LayoutDashboard,
       badge: null,
     },
-    {
-      id: 'wizard',
-      label: 'Setup Wizard',
-      icon: Trophy,
-      badge: null,
-    },
-    {
-      id: 'registrations',
-      label: 'Registrations Queue',
-      icon: Building2,
-      badge: pendingRegCount > 0 ? pendingRegCount : null,
-      badgeColor: 'bg-amber-500 text-white',
-    },
-    {
-      id: 'rosters',
-      label: 'Rosters Queue',
-      icon: Users,
-      badge: pendingRosterCount > 0 ? pendingRosterCount : null,
-      badgeColor: 'bg-blue-600 text-white',
-    },
-    {
-      id: 'fixtures',
-      label: 'Fixtures & Clashes',
-      icon: Calendar,
-      badge: fixtureClashCount > 0 ? fixtureClashCount : null,
-      badgeColor: 'bg-[#D43D2A] text-white animate-pulse',
-    },
-    {
-      id: 'transfers',
-      label: 'Transfers & Discipline',
-      icon: ArrowRightLeft,
-      badge: pendingTransferCount > 0 ? pendingTransferCount : null,
-      badgeColor: 'bg-amber-500 text-white',
-    },
-    {
-      id: 'officials',
-      label: 'Officials & Live Events',
-      icon: Award,
-      badge: null,
-    },
-    {
-      id: 'news',
-      label: 'News & Media',
-      icon: Megaphone,
-      badge: pendingMediaCount > 0 ? pendingMediaCount : null,
-      badgeColor: 'bg-red-500 text-white animate-pulse',
-    },
-    {
-      id: 'audit',
-      label: 'Audit Log',
-      icon: FileText,
-      badge: null,
-    },
+    // Setup Wizard — admin only
+    ...(isAdmin
+      ? [{ id: 'wizard', label: 'Setup Wizard', icon: Trophy, badge: null }]
+      : []),
+    // Registrations Queue — admin, registrar
+    ...(isAdmin || isRegistrar
+      ? [{
+          id: 'registrations',
+          label: 'Registrations Queue',
+          icon: Building2,
+          badge: pendingRegCount > 0 ? pendingRegCount : null,
+          badgeColor: 'bg-amber-500 text-white',
+        }]
+      : []),
+    // Rosters Queue — admin, registrar
+    ...(isAdmin || isRegistrar
+      ? [{
+          id: 'rosters',
+          label: 'Rosters Queue',
+          icon: Users,
+          badge: pendingRosterCount > 0 ? pendingRosterCount : null,
+          badgeColor: 'bg-blue-600 text-white',
+        }]
+      : []),
+    // Fixtures — everyone except coach (coach uses Android for this)
+    ...(!isCoach
+      ? [{
+          id: 'fixtures',
+          label: isAdmin ? 'Fixtures & Clashes' : 'Fixtures',
+          icon: Calendar,
+          badge: isAdmin && fixtureClashCount > 0 ? fixtureClashCount : null,
+          badgeColor: 'bg-[#D43D2A] text-white animate-pulse',
+        }]
+      : []),
+    // Transfers & Discipline — admin only
+    ...(isAdmin
+      ? [{
+          id: 'transfers',
+          label: 'Transfers & Discipline',
+          icon: ArrowRightLeft,
+          badge: pendingTransferCount > 0 ? pendingTransferCount : null,
+          badgeColor: 'bg-amber-500 text-white',
+        }]
+      : []),
+    // Officials & Live Events — admin, ref_coordinator, official
+    ...(isAdmin || isRefCoord || isOfficial
+      ? [{ id: 'officials', label: 'Officials & Live Events', icon: Award, badge: null }]
+      : []),
+    // News & Media — admin, media_officer, coach
+    ...(isAdmin || isMediaOfficer || isCoach
+      ? [{
+          id: 'news',
+          label: 'News & Media',
+          icon: Megaphone,
+          badge: pendingMediaCount > 0 ? pendingMediaCount : null,
+          badgeColor: 'bg-red-500 text-white animate-pulse',
+        }]
+      : []),
+    // Audit Log — admin only
+    ...(isAdmin
+      ? [{ id: 'audit', label: 'Audit Log', icon: FileText, badge: null }]
+      : []),
+    // Profile — everyone
     {
       id: 'profile',
       label: 'My Profile',
       icon: UserCircle,
       badge: null,
     },
+    // User Management — system_admin only
     ...(userRole === 'system_admin'
-      ? [
-          {
-            id: 'users',
-            label: 'User Management',
-            icon: Shield,
-            badge: null,
-          },
-        ]
+      ? [{ id: 'users', label: 'User Management', icon: Shield, badge: null }]
       : []),
   ];
 
@@ -128,7 +139,7 @@ export default function Sidebar({
           Athletica.
         </h2>
         <p className="text-[9px] uppercase tracking-widest text-slate-400 mt-1 font-bold">
-          Admin Control Panel
+          {isAdmin ? 'Admin Control Panel' : isCoach ? 'Coach Portal' : `${(userRole || '').replace('_', ' ')} Portal`}
         </p>
       </div>
 
@@ -165,20 +176,22 @@ export default function Sidebar({
         })}
       </nav>
 
-      {/* Info panel */}
-      <div className="p-4 m-4 bg-white border border-[#E5E5E1] text-[#121212]">
-        <div className="flex gap-2.5 items-start">
-          <AlertTriangle className={`h-4.5 w-4.5 shrink-0 mt-0.5 ${fixtureClashCount > 0 ? 'text-[#D43D2A]' : 'text-slate-400'}`} />
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-[#121212] uppercase tracking-widest">Conflict Log</span>
-            <p className="mt-1 text-[11px] text-[#8b8b85] leading-normal font-mono">
-              {fixtureClashCount > 0
-                ? `WARNING: ${fixtureClashCount} overlapping slot conflicts detected.`
-                : 'STATUS: OK. Perfect schedule detected.'}
-            </p>
+      {/* Info panel — admin only */}
+      {isAdmin && (
+        <div className="p-4 m-4 bg-white border border-[#E5E5E1] text-[#121212]">
+          <div className="flex gap-2.5 items-start">
+            <AlertTriangle className={`h-4.5 w-4.5 shrink-0 mt-0.5 ${fixtureClashCount > 0 ? 'text-[#D43D2A]' : 'text-slate-400'}`} />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-[#121212] uppercase tracking-widest">Conflict Log</span>
+              <p className="mt-1 text-[11px] text-[#8b8b85] leading-normal font-mono">
+                {fixtureClashCount > 0
+                  ? `WARNING: ${fixtureClashCount} overlapping slot conflicts detected.`
+                  : 'STATUS: OK. Perfect schedule detected.'}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Sidebar Footer */}
       <div className="border-t border-[#E5E5E1] p-4 text-center bg-[#F1F1ED]">

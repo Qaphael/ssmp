@@ -141,15 +141,15 @@ const permissions = {
 
   // ─── Media ───────────────────────────────────────────────────────
   'media:list':          [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.MEDIA_OFFICER],
-  'media:create':        [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.MEDIA_OFFICER],
+  'media:create':        [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.MEDIA_OFFICER, ROLES.COACH],
   'media:approve':       [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.MEDIA_OFFICER],
   'media:delete':        [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN],
 
   // ─── News ────────────────────────────────────────────────────────
   'news:list':           ALL_AUTHENTICATED,
   'news:read':           ALL_AUTHENTICATED,
-  'news:create':         [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.MEDIA_OFFICER],
-  'news:update':         [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.MEDIA_OFFICER],
+  'news:create':         [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.MEDIA_OFFICER, ROLES.COACH],
+  'news:update':         [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.MEDIA_OFFICER, ROLES.COACH],
   'news:publish':        [ROLES.SYSTEM_ADMIN, ROLES.COMP_ADMIN, ROLES.MEDIA_OFFICER],
 
   // ─── Audit Logs ──────────────────────────────────────────────────
