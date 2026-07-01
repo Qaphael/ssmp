@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { getToken } from './auth';
 
 let socket: Socket | null = null;
 let connected = false;
@@ -6,6 +7,11 @@ let connected = false;
 const listeners: Record<string, Set<(data: any) => void>> = {};
 
 export async function fetchDevToken(apiUrl: string, role: string): Promise<string> {
+  // Use real token if available
+  const realToken = getToken();
+  if (realToken) return realToken;
+
+  // Fall back to dev-token endpoint (demo mode only)
   try {
     const res = await fetch(`${apiUrl}/api/auth/dev-token`, {
       method: 'POST',

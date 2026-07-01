@@ -844,6 +844,12 @@ export const mockDb = {
 
   _cachedToken: '' as string,
   async getToken(): Promise<string> {
+    // Use real auth token if available
+    const { getToken } = await import('./auth');
+    const realToken = getToken();
+    if (realToken) return realToken;
+
+    // Fall back to dev-token for demo mode
     if (this._cachedToken) return this._cachedToken;
     const url = this.getApiUrl();
     if (!url) return '';

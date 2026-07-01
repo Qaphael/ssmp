@@ -16,6 +16,8 @@ import {
   Award,
   Megaphone,
   FileText,
+  UserCircle,
+  Shield,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,6 +28,7 @@ interface SidebarProps {
   fixtureClashCount: number;
   pendingTransferCount: number;
   pendingMediaCount: number;
+  userRole?: string;
 }
 
 export default function Sidebar({
@@ -36,6 +39,7 @@ export default function Sidebar({
   fixtureClashCount,
   pendingTransferCount,
   pendingMediaCount,
+  userRole,
 }: SidebarProps) {
   const menuItems = [
     {
@@ -97,6 +101,22 @@ export default function Sidebar({
       icon: FileText,
       badge: null,
     },
+    {
+      id: 'profile',
+      label: 'My Profile',
+      icon: UserCircle,
+      badge: null,
+    },
+    ...(userRole === 'system_admin'
+      ? [
+          {
+            id: 'users',
+            label: 'User Management',
+            icon: Shield,
+            badge: null,
+          },
+        ]
+      : []),
   ];
 
   return (

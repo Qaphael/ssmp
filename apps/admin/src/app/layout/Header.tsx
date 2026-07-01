@@ -1,29 +1,39 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState } from 'react';
-import { Shield, Server, UserCircle } from 'lucide-react';
+import React from 'react';
+import { Shield, Server, LogOut } from 'lucide-react';
 import { UserRole } from '@ssmp/shared-types';
+import { AuthUser } from '../../shared/api/auth';
 
 interface HeaderProps {
   currentRole: UserRole;
   onChangeRole: (role: UserRole) => void;
   apiUrl: string;
   onSaveApiUrl: (url: string) => void;
+  user: AuthUser | null;
+  onLogout: () => void;
+  isDemoMode: boolean;
 }
 
-export default function Header({ currentRole, onChangeRole, apiUrl }: HeaderProps) {
-  const rolesList: { value: UserRole; label: string }[] = [
-    { value: 'comp_admin', label: 'Competition Admin' },
-    { value: 'system_admin', label: 'System Admin' },
-    { value: 'registrar', label: 'Registrar' },
-    { value: 'referee_coordinator', label: 'Referee Coordinator' },
-    { value: 'official', label: 'Official' },
-    { value: 'coach', label: 'Coach' },
-  ];
+const ROLES_LIST: { value: UserRole; label: string }[] = [
+  { value: 'comp_admin', label: 'Competition Admin' },
+  { value: 'system_admin', label: 'System Admin' },
+  { value: 'registrar', label: 'Registrar' },
+  { value: 'referee_coordinator', label: 'Referee Coordinator' },
+  { value: 'official', label: 'Official' },
+  { value: 'coach', label: 'Coach' },
+];
 
+function getInitials(user: AuthUser | null): string {
+  if (!user) return '??';
+  const first = user.firstName?.[0] || user.email?.[0] || '?';
+  const last = user.lastName?.[0] || '';
+  return (first + last).toUpperCase();
+}
+
+function formatRole(role: string): string {
+  return role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export default function Header({ currentRole, onChangeRole, apiUrl, user, onLogout, isDemoMode }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 flex h-20 w-full items-center justify-between border-b border-[#E5E5E1] bg-[#FBFBF9] px-6 md:px-10">
       <div className="flex items-center gap-2">
@@ -41,37 +51,52 @@ export default function Header({ currentRole, onChangeRole, apiUrl }: HeaderProp
           </span>
         </div>
 
-        {/* Role Simulator Selector */}
-        <div className="flex items-center gap-2 border-l border-[#E5E5E1] pl-4">
-          <Shield className="h-4 w-4 text-[#D43D2A]" />
-          <div className="flex flex-col">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-[#8b8b85]">
-              Active Simulator
-            </span>
-            <select
-              id="role-simulator-select"
-              value={currentRole}
-              onChange={(e) => onChangeRole(e.target.value as UserRole)}
-              className="mt-0.5 rounded-none border-none bg-transparent p-0 text-xs font-bold font-serif italic text-[#D43D2A] focus:ring-0 focus:outline-hidden cursor-pointer"
-            >
-              {rolesList.map((role) => (
-                <option key={role.value} value={role.value} className="font-sans text-[#121212] not-italic">
-                  {role.label}
-                </option>
-              ))}
-            </select>
+        {/* Role Simulator — demo mode only */}
+        {isDemoMode && (
+          <div className="flex items-center gap-2 border-l border-[#E5E5E1] pl-4">
+            <Shield className="h-4 w-4 text-[#D43D2A]" />
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-[#8b8b85]">
+                Active Simulator
+              </span>
+              <select
+                id="role-simulator-select"
+                value={currentRole}
+                onChange={(e) => onChangeRole(e.target.value as UserRole)}
+                className="mt-0.5 rounded-none border-none bg-transparent p-0 text-xs font-bold font-serif italic text-[#D43D2A] focus:ring-0 focus:outline-hidden cursor-pointer"
+              >
+                {ROLES_LIST.map((role) => (
+                  <option key={role.value} value={role.value} className="font-sans text-[#121212] not-italic">
+                    {role.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* User Info */}
         <div className="flex items-center gap-3 border-l border-[#E5E5E1] pl-4">
           <div className="hidden flex-col text-right md:flex">
-            <span className="text-xs font-bold text-[#121212]">Sarah Jenkins</span>
-            <span className="text-[9px] text-[#8b8b85] font-mono uppercase">League Commissioner</span>
+            <span className="text-xs font-bold text-[#121212]">
+              {user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Demo User'}
+            </span>
+            <span className="text-[9px] text-[#8b8b85] font-mono uppercase">
+              {user ? formatRole(user.role) : 'Simulator'}
+            </span>
           </div>
           <div className="w-8 h-8 rounded-none bg-[#121212] flex items-center justify-center text-white text-xs font-bold font-serif">
-            SJ
+            {getInitials(user)}
           </div>
+          {user && (
+            <button
+              onClick={onLogout}
+              className="flex h-8 w-8 items-center justify-center rounded-none border border-[#E5E5E1] bg-white text-[#8b8b85] hover:text-[#D43D2A] hover:border-[#D43D2A] transition cursor-pointer"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </header>

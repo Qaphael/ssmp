@@ -672,7 +672,7 @@ const mockPool = {
       return { rows: playerIds.map((id) => ({ player_id: id })) };
     }
 
-    if (lowerSql.includes('select competition_id from matches') && lowerSql.includes('where id')) {
+    if (lowerSql.includes('select competition_id') && lowerSql.includes('official_id') && lowerSql.includes('from matches') && lowerSql.includes('where id')) {
       const row = db.findById('matches', params[0]);
       return { rows: row ? [{ competition_id: row.competition_id, home_team_id: row.home_team_id, away_team_id: row.away_team_id, official_id: row.official_id || null }] : [] };
     }

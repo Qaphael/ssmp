@@ -1,9 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Organization, Season, Competition, Team, Player, TeamRegistration, RosterSubmission, Fixture, Pitch, UserRole, Official, TransferRequest, MatchEvent, NewsArticle, Media, Suspension, AuditLog, Notification } from '@ssmp/shared-types';
+import { Season, Competition, Team, Player, TeamRegistration, RosterSubmission, Fixture, Pitch, UserRole, Official, TransferRequest, MatchEvent, NewsArticle, Media, Suspension, AuditLog, Notification } from '@ssmp/shared-types';
 import { mockDb, detectConflicts } from './shared/api/mockDb';
+import { getToken, getUser, logout as authLogout, getAuthHeaders, AuthUser } from './shared/api/auth';
 import Sidebar from './app/layout/Sidebar';
 import Header from './app/layout/Header';
+import LoginScreen from './features/auth/LoginScreen';
+import RegisterScreen from './features/auth/RegisterScreen';
+import ForgotPasswordScreen from './features/auth/ForgotPasswordScreen';
+import ResetPasswordScreen from './features/auth/ResetPasswordScreen';
+import ProfileScreen from './features/auth/ProfileScreen';
+import UserManagement from './features/auth/UserManagement';
 import Dashboard from './features/dashboard/Dashboard';
 import CompetitionWizard from './features/competitions/CompetitionWizard';
 import RegistrationQueue from './features/registrations/RegistrationQueue';
@@ -14,7 +21,17 @@ import OfficialsMatchEvents from './features/officials/OfficialsMatchEvents';
 import NewsMedia from './features/media/NewsMedia';
 import AuditLogViewer from './features/audit/AuditLogViewer';
 
+type AuthView = 'login' | 'register' | 'forgot-password' | 'reset-password';
+
 export default function App() {
+  // Auth state
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
+    const token = getToken();
+    return token ? getUser() : null;
+  });
+  const [authView, setAuthView] = useState<AuthView>('login');
+
+  // App state
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentRole, setCurrentRole] = useState<UserRole>('comp_admin');
   const [apiUrl, setApiUrl] = useState(import.meta.env.VITE_API_URL || '');
@@ -36,14 +53,37 @@ export default function App() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   const isDemoMode = !apiUrl;
+  const isAuthenticated = isDemoMode || !!getToken();
 
+  // Sync currentRole with auth user role
   useEffect(() => {
-    refreshAllData();
-  }, []);
+    if (authUser?.role) {
+      setCurrentRole(authUser.role as UserRole);
+    }
+  }, [authUser]);
 
-  const refreshAllData = async () => {
+  const handleAuth = (data: { token: string; user: AuthUser }) => {
+    setAuthUser(data.user);
+    setAuthView('login');
+  };
+
+  const handleLogout = () => {
+    authLogout();
+    setAuthUser(null);
+    setAuthView('login');
+    setActiveTab('dashboard');
+  };
+
+  const handleUserUpdated = (updatedUser: AuthUser) => {
+    setAuthUser(updatedUser);
+  };
+
+  const refreshAllData = useCallback(async () => {
     const url = apiUrl || import.meta.env.VITE_API_URL || '';
     if (url) {
+      const headers = getAuthHeaders();
+
+      // Public endpoints (no auth needed)
       try {
         const compsRes = await fetch(`${url}/api/public/competitions`);
         if (compsRes.ok) {
@@ -72,64 +112,46 @@ export default function App() {
           setPlayers(data.data || data);
         }
       } catch { /* ignore */ }
-      try {
-        const token = await mockDb.getToken();
-        const fixturesRes = await fetch(`${url}/api/fixtures`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (fixturesRes.ok) {
-          const data = await fixturesRes.json();
-          setFixtures(data.data || data);
+
+      // Authenticated endpoints
+      const authFetch = async (path: string) => {
+        const res = await fetch(`${url}${path}`, { headers });
+        if (res.status === 401) {
+          authLogout();
+          setAuthUser(null);
+          return null;
         }
+        if (!res.ok) return null;
+        return res.json();
+      };
+
+      try {
+        const data = await authFetch('/api/fixtures');
+        if (data) setFixtures(data.data || data);
       } catch { /* ignore */ }
       try {
-        const token = await mockDb.getToken();
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const transfersRes = await fetch(`${url}/api/transfers`, { headers });
-        if (transfersRes.ok) {
-          const data = await transfersRes.json();
-          setTransfers(data.data || data);
-        }
+        const data = await authFetch('/api/transfers');
+        if (data) setTransfers(data.data || data);
       } catch { /* ignore */ }
       try {
-        const token = await mockDb.getToken();
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const suspRes = await fetch(`${url}/api/discipline/suspensions`, { headers });
-        if (suspRes.ok) {
-          const data = await suspRes.json();
-          setSuspensions(data.data || data);
-        }
+        const data = await authFetch('/api/discipline/suspensions');
+        if (data) setSuspensions(data.data || data);
       } catch { /* ignore */ }
       try {
-        const token = await mockDb.getToken();
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const notifRes = await fetch(`${url}/api/notifications`, { headers });
-        if (notifRes.ok) {
-          const data = await notifRes.json();
-          setNotifications(data.data || data);
-        }
+        const data = await authFetch('/api/notifications');
+        if (data) setNotifications(data.data || data);
       } catch { /* ignore */ }
       try {
-        const token = await mockDb.getToken();
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const newsRes = await fetch(`${url}/api/news`, { headers });
-        if (newsRes.ok) {
-          const data = await newsRes.json();
-          setNews(data.data || data);
-        }
+        const data = await authFetch('/api/news');
+        if (data) setNews(data.data || data);
       } catch { /* ignore */ }
       try {
-        const token = await mockDb.getToken();
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const mediaRes = await fetch(`${url}/api/media`, { headers });
-        if (mediaRes.ok) {
-          const data = await mediaRes.json();
-          setMedia(data.data || data);
-        }
+        const data = await authFetch('/api/media');
+        if (data) setMedia(data.data || data);
       } catch { /* ignore */ }
     }
 
-    // Demo mode fallback: populate from local storage when no API is configured
+    // Demo mode fallback
     if (!url) {
       setSeasons(mockDb.getSeasons());
       setCompetitions(mockDb.getCompetitions());
@@ -149,7 +171,13 @@ export default function App() {
     setRegistrations(mockDb.getRegistrations());
     setRosters(mockDb.getRosters());
     setAuditLogs(mockDb.getAuditLogs());
-  };
+  }, [apiUrl]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshAllData();
+    }
+  }, [isAuthenticated, refreshAllData]);
 
   const handleSaveApiUrl = (url: string) => {
     setApiUrl(url);
@@ -158,6 +186,26 @@ export default function App() {
   const handleCompetitionCreated = async () => {
     await refreshAllData();
   };
+
+  // Auth screens
+  if (!isAuthenticated) {
+    if (authView === 'register') {
+      return <RegisterScreen onAuth={handleAuth} onSwitchToLogin={() => setAuthView('login')} />;
+    }
+    if (authView === 'forgot-password') {
+      return <ForgotPasswordScreen onSwitchToLogin={() => setAuthView('login')} />;
+    }
+    if (authView === 'reset-password') {
+      return <ResetPasswordScreen onSwitchToLogin={() => setAuthView('login')} />;
+    }
+    return (
+      <LoginScreen
+        onAuth={handleAuth}
+        onSwitchToRegister={() => setAuthView('register')}
+        onSwitchToForgot={() => setAuthView('forgot-password')}
+      />
+    );
+  }
 
   const pendingRegCount = registrations.filter((r) => r.status === 'pending').length;
   const pendingRosterCount = rosters.filter((r) => r.status === 'submitted').length;
@@ -176,6 +224,7 @@ export default function App() {
         fixtureClashCount={fixtureClashCount}
         pendingTransferCount={pendingTransferCount}
         pendingMediaCount={pendingMediaCount}
+        userRole={authUser?.role}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -184,6 +233,9 @@ export default function App() {
           onChangeRole={setCurrentRole}
           apiUrl={apiUrl}
           onSaveApiUrl={handleSaveApiUrl}
+          user={authUser}
+          onLogout={handleLogout}
+          isDemoMode={isDemoMode}
         />
 
         {/* Demo Mode Banner */}
@@ -301,6 +353,14 @@ export default function App() {
 
                 {activeTab === 'audit' && (
                   <AuditLogViewer auditLogs={auditLogs} />
+                )}
+
+                {activeTab === 'profile' && authUser && (
+                  <ProfileScreen currentUser={authUser} onUserUpdated={handleUserUpdated} />
+                )}
+
+                {activeTab === 'users' && authUser?.role === 'system_admin' && (
+                  <UserManagement />
                 )}
               </motion.div>
             </AnimatePresence>

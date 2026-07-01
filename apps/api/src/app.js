@@ -21,6 +21,7 @@ const notificationRoutes = require('./modules/notifications/notification.routes'
 const mediaRoutes = require('./modules/media/media.routes');
 const newsRoutes = require('./modules/news/news.routes');
 const authRoutes = require('./modules/auth/auth.routes');
+const userRoutes = require('./modules/users/user.routes');
 const standingsRoutes = require('./modules/standings/standings.routes');
 const standingsPublicRoutes = require('./modules/standings/standings-public.routes');
 const competitionPublicRoutes = require('./modules/competitions/competition-public.routes');
@@ -92,6 +93,7 @@ app.use('/api/audit-logs', auditRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/standings', standingsRoutes);
 app.use('/api/public/standings', standingsPublicRoutes);
 app.use('/api/competitions/:competitionId/standings', standingsPublicRoutes);
