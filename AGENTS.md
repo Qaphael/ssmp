@@ -35,6 +35,7 @@ psql -U postgres -d ssmp -f apps/api/src/db/migrations/006_notifications.sql
 psql -U postgres -d ssmp -f apps/api/src/db/migrations/007_media.sql
 psql -U postgres -d ssmp -f apps/api/src/db/migrations/008_lineups.sql
 psql -U postgres -d ssmp -f apps/api/src/db/migrations/009_news.sql
+psql -U postgres -d ssmp -f apps/api/src/db/migrations/010_jersey_number_unique.sql
 # Seed test data:
 psql -U postgres -d ssmp -f apps/api/src/db/seed.sql
 ```

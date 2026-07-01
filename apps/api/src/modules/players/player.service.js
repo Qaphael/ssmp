@@ -71,27 +71,34 @@ class PlayerService {
   async create(data, auditCtx) {
     await this._checkRegistrationWindow(data.teamId);
 
-    const result = await pool.query(
-      `INSERT INTO players (team_id, first_name, last_name, jersey_number, position, date_of_birth, nationality, height, weight, photo_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING *`,
-      [
-        data.teamId,
-        data.firstName,
-        data.lastName,
-        data.jerseyNumber,
-        data.position || null,
-        data.dateOfBirth,
-        data.nationality || null,
-        data.height || null,
-        data.weight || null,
-        data.photoUrl || null,
-      ]
-    );
-    if (auditCtx) {
-      await createAuditLog({ ...auditCtx, action: 'player:create', entityType: 'player', entityId: result.rows[0].id, newValue: result.rows[0] });
+    try {
+      const result = await pool.query(
+        `INSERT INTO players (team_id, first_name, last_name, jersey_number, position, date_of_birth, nationality, height, weight, photo_url)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING *`,
+        [
+          data.teamId,
+          data.firstName,
+          data.lastName,
+          data.jerseyNumber,
+          data.position || null,
+          data.dateOfBirth,
+          data.nationality || null,
+          data.height || null,
+          data.weight || null,
+          data.photoUrl || null,
+        ]
+      );
+      if (auditCtx) {
+        await createAuditLog({ ...auditCtx, action: 'player:create', entityType: 'player', entityId: result.rows[0].id, newValue: result.rows[0] });
+      }
+      return result.rows[0];
+    } catch (err) {
+      if (err.code === '23505') {
+        throw Object.assign(new Error('Jersey number already in use on this team'), { status: 409 });
+      }
+      throw err;
     }
-    return result.rows[0];
   }
 
   async createBulk(teamId, players, auditCtx) {
@@ -131,6 +138,9 @@ class PlayerService {
       return created;
     } catch (err) {
       await client.query('ROLLBACK');
+      if (err.code === '23505') {
+        throw Object.assign(new Error('Jersey number already in use on this team'), { status: 409 });
+      }
       throw err;
     } finally {
       client.release();
@@ -180,14 +190,21 @@ class PlayerService {
     fields.push(`updated_at = NOW()`);
     values.push(id);
 
-    const result = await pool.query(
-      `UPDATE players SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
-      values
-    );
-    if (auditCtx && result.rows[0]) {
-      await createAuditLog({ ...auditCtx, action: 'player:update', entityType: 'player', entityId: id, oldValue: existing, newValue: result.rows[0] });
+    try {
+      const result = await pool.query(
+        `UPDATE players SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+        values
+      );
+      if (auditCtx && result.rows[0]) {
+        await createAuditLog({ ...auditCtx, action: 'player:update', entityType: 'player', entityId: id, oldValue: existing, newValue: result.rows[0] });
+      }
+      return result.rows[0];
+    } catch (err) {
+      if (err.code === '23505') {
+        throw Object.assign(new Error('Jersey number already in use on this team'), { status: 409 });
+      }
+      throw err;
     }
-    return result.rows[0];
   }
 
   async updateInjuryStatus(id, data, auditCtx) {
