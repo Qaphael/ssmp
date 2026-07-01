@@ -8,7 +8,7 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY packages/shared-types/package.json packages/shared-types/
 COPY apps/admin/package.json apps/admin/
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 COPY packages/shared-types/ packages/shared-types/
 RUN pnpm --filter @ssmp/shared-types build

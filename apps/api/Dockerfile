@@ -13,7 +13,7 @@ COPY packages/shared-types/package.json packages/shared-types/
 COPY apps/api/package.json apps/api/
 
 # Install deps
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # Copy shared-types source and build
 COPY packages/shared-types/ packages/shared-types/
